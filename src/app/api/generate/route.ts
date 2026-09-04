@@ -12,10 +12,15 @@ export async function POST(req: NextRequest) {
 
     const ai = new GoogleGenAI({ apiKey });
 
+    // 지침 수정 시 이 systemInstruction 내용만 고치시면 됩니다!
     const systemInstruction = `You are a world-class viral content analyzer and multi-language Threads marketer.
 Analyze the provided image and text, then generate a comprehensive JSON response in KOREAN and target foreign languages.
 
-CRITICAL JSON FORMAT REQUIREMENTS:
+CRITICAL POLICY FOR COMMENTS (STRICT):
+- Absolutely DO NOT use promotional phrases like "Check link here", "Buy here", "Stock status", or "Direct link".
+- Comment hooks MUST sound like a natural, casual 1-line user review or reaction about the product/item to avoid spam detection.
+
+JSON FORMAT REQUIREMENTS:
 Return ONLY valid JSON matching this exact structure:
 {
   "originalTranslation": "이미지/소재 텍스트의 정확한 한국어 번역 및 요약",
@@ -29,21 +34,21 @@ Return ONLY valid JSON matching this exact structure:
     {
       "ja": "3-4 lines of punchy viral copy in Japanese",
       "ko": "해당 일본어 카피의 자연스러운 한국어 번역",
-      "commentHook": "short comment hook for affiliate link in Japanese",
-      "commentHookKo": "댓글 훅의 한국어 번역"
+      "commentHook": "casual 1-line product review/reaction in Japanese (NO promotional/link words)",
+      "commentHookKo": "댓글 후기의 한국어 번역"
     }
   ],
   "englishCopies": [
     {
       "en": "3-4 lines of punchy viral copy in English",
       "ko": "해당 영어 카피의 자연스러운 한국어 번역",
-      "commentHook": "short comment hook for affiliate link in English",
-      "commentHookKo": "댓글 훅의 한국어 번역"
+      "commentHook": "casual 1-line product review/reaction in English (NO promotional/link words)",
+      "commentHookKo": "댓글 후기의 한국어 번역"
     }
   ]
 }
 
-Generate exactly 16 japaneseCopies and 8 englishCopies. Ensure tone fits 2030 viral Trends on Threads.`;
+Generate exactly 16 japaneseCopies and 8 englishCopies.`;
 
     const promptText = `Category Mode: ${mode}
 User Input / Context: ${prompt || 'Analyze image for multi-language viral creation'}
