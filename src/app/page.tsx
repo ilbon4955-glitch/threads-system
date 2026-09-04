@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Key, Sparkles, Copy, Check } from 'lucide-react';
 
 interface CopyResult {
   ja: string;
@@ -15,7 +14,7 @@ interface GenerateResponse {
 }
 
 export default function Home() {
-  const [apiKey, setApiKey] = useState(''); 
+  const [apiKey, setApiKey] = useState('');
   const [prompt, setPrompt] = useState('');
   const [affiliateLink, setAffiliateLink] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -97,7 +96,7 @@ export default function Home() {
           <div>
             <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
               <span>Threads 2030 바이럴 생성기</span>
-              <Sparkles className="w-5 h-5 text-amber-500" />
+              <span>✨</span>
             </h1>
             <p className="text-sm text-slate-500 mt-1">
               현지 2030 감성 3~4줄 후킹 카피 및 댓글 링크 훅 자동 생성
@@ -106,7 +105,7 @@ export default function Home() {
 
           <div className="flex flex-col gap-1 min-w-[300px]">
             <div className="relative flex items-center">
-              <Key className="w-4 h-4 absolute left-3 text-slate-400" />
+              <span className="absolute left-3 text-slate-400 text-xs">🔑</span>
               <input
                 type="password"
                 placeholder="Gemini API Key 입력"
@@ -217,10 +216,7 @@ export default function Home() {
             {loading ? (
               <span>2030 바이럴 카피 생성 중...</span>
             ) : (
-              <>
-                <Sparkles className="w-4 h-4 text-amber-400" />
-                <span>분석하고 {language === 'ja' ? '16종' : '8종'} 카피 생성하기</span>
-              </>
+              <span>분석하고 {language === 'ja' ? '16종' : '8종'} 카피 생성하기</span>
             )}
           </button>
         </form>
@@ -264,8 +260,7 @@ export default function Home() {
                           onClick={() => copyToClipboard(`${item.commentHook}\n${affiliateLink || 'https://link.com'}`, `c-${i}`)}
                           className="text-amber-700 hover:underline flex items-center gap-1 text-[10px]"
                         >
-                          {copiedIndex === `c-${i}` ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                          댓글 복사
+                          {copiedIndex === `c-${i}` ? '✓ 완료' : '📋 복사'}
                         </button>
                       </div>
                       <p className="text-slate-700 font-medium">{item.commentHook}</p>
@@ -277,17 +272,7 @@ export default function Home() {
                       onClick={() => copyToClipboard(item.ja, `p-${i}`)}
                       className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs rounded-xl transition-all flex items-center justify-center gap-1.5"
                     >
-                      {copiedIndex === `p-${i}` ? (
-                        <>
-                          <Check className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>복사 완료!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3.5 h-3.5" />
-                          <span>본문 카피 복사</span>
-                        </>
-                      )}
+                      {copiedIndex === `p-${i}` ? '✓ 복사 완료!' : '📋 본문 카피 복사'}
                     </button>
                   </div>
                 </div>
