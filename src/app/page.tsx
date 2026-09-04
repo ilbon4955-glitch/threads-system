@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Key, Sparkles, Copy, Check, Image as ImageIcon, Link as LinkIcon } from 'lucide-react';
+import { Key, Sparkles, Copy, Check } from 'lucide-react';
 
 interface CopyResult {
   ja: string;
@@ -18,7 +18,6 @@ export default function Home() {
   const [apiKey, setApiKey] = useState('');
   const [prompt, setPrompt] = useState('');
   const [affiliateLink, setAffiliateLink] = useState('');
-  const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [mode, setMode] = useState<'shopping' | 'lifestyle'>('shopping');
   const [language, setLanguage] = useState<'ja' | 'en'>('ja');
@@ -41,7 +40,6 @@ export default function Home() {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setImageFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result as string);
