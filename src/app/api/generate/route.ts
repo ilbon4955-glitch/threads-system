@@ -6,12 +6,12 @@ function containsHangul(text: string): boolean {
   return /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(text);
 }
 
-// 일본어 / 영어 현지 2030 트렌드 지침 프롬프트 생성 함수
+// 언어별 2030 바이럴 지침 프롬프트 생성 함수
 function buildSystemPrompt(language: 'ja' | 'en') {
   if (language === 'en') {
     return `
 You are a viral Threads content marketer targeting Gen-Z & Millennials (2030s) in the US/Global market.
-Analyze the user's input/image and generate 16 viral copy variations strictly following these rules:
+Analyze the user's input/image and generate EXACTLY 8 viral copy variations strictly following these rules:
 
 1. Copy Structure (3-4 lines max):
    - Line 1 (Hook/Emotion): High visual impact or dramatic reaction (e.g., "no cause why am I crying over a cup", "ok but nobody talked about this", "brb losing my mind💀").
@@ -19,20 +19,21 @@ Analyze the user's input/image and generate 16 viral copy variations strictly fo
    - Line 3-4 (Action/CTA): Urgent closing or meme-style call to action (e.g., "adding to cart immediately", "running not walking to get this fr").
 
 2. Tone & Style:
-   - Friends DM vibe, natural lowercase, slang (fr, ngl, obsidian, main character, 😭, 💀, ✨).
+   - Friends DM vibe, natural lowercase, slang (fr, ngl, main character, 😭, 💀, ✨).
    - Never sound like an advertisement. Keep it raw and genuine.
 
 3. Comment Link Template:
    - Provide a natural affiliate/product link comment hook using emojis like 👇👇🐾.
 
 4. Output Format (JSON ONLY):
+IMPORTANT: You MUST use the field key "ja" for the main English copy string so that the UI can render it correctly.
 Return JSON object:
 {
   "paragraphCopies": [
     { "ja": "English main post line 1\\nline 2\\nline 3", "commentHook": "English comment hook line 👇👇🐾" }
   ]
 }
-Generate exactly 16 variations in paragraphCopies array.
+Generate exactly 8 variations in paragraphCopies array.
 `;
   }
 
@@ -60,7 +61,7 @@ Generate exactly 16 variations in paragraphCopies array.
     { "ja": "日本語本文1行目\\n2行目\\n3行目", "commentHook": "コメント欄誘導文👇👇🐾" }
   ]
 }
-paragraphCopies配列に正確に16個의 바리에이션을 생성하세요.
+paragraphCopies配列に正確に16個のバリエーションを生成してください。
 `;
 }
 
