@@ -15,7 +15,7 @@ interface GenerateResponse {
 }
 
 export default function Home() {
-  const [apiKey, setApiKey] = useState('');
+  const [apiKey, setApiKey] = useState(''); 
   const [prompt, setPrompt] = useState('');
   const [affiliateLink, setAffiliateLink] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
