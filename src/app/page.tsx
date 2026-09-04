@@ -254,7 +254,7 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* 댓글 훅 카트 */}
+                  {/* 댓글 훅 카드 */}
                   <div className="space-y-2">
                     <div className="bg-amber-50/60 border border-amber-100 p-3 rounded-xl text-xs space-y-1">
                       <div className="flex justify-between items-center text-[11px] font-semibold text-amber-800">
