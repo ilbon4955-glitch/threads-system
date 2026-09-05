@@ -10,17 +10,14 @@ function cleanAndFixJson(rawText: string) {
     .replace(/```/g, '')
     .trim();
 
-  // JSON 시작점 찾기
   const firstOpenBrace = cleanText.indexOf('{');
   if (firstOpenBrace !== -1) {
     cleanText = cleanText.substring(firstOpenBrace);
   }
 
-  // 1차 시도: 일반 파싱
   try {
     return JSON.parse(cleanText);
   } catch (e) {
-    // 2차 시도: 제어문자 및 줄바꿈 이스케이프 정제
     try {
       const sanitized = cleanText
         .replace(/[\u0000-\u001F]+/g, ' ')
@@ -29,14 +26,12 @@ function cleanAndFixJson(rawText: string) {
         .replace(/\t/g, '\\t');
       return JSON.parse(sanitized);
     } catch (e2) {
-      // 3차 시도: 끝부분이 잘렸을 경우 괄호 닫아주기 시도
       let lastCloseBrace = cleanText.lastIndexOf('}');
       if (lastCloseBrace !== -1) {
         let truncated = cleanText.substring(0, lastCloseBrace + 1);
         try {
           return JSON.parse(truncated);
         } catch (e3) {
-          // 정규식으로 유효한 JSON 객체만 추출
           const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
             try {
@@ -72,32 +67,39 @@ export async function POST(req: NextRequest) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
 
+    // 2030 바이럴 쓰레드 최적화 시스템 지침
     const systemInstruction = `
-      You are an expert social media copywriter.
-      Generate viral copies based on user input.
+      You are a top-tier Japanese & Global Threads viral copywriter targeting 20s and 30s users.
 
-      CRITICAL REQUIREMENTS:
-      1. You MUST generate valid, parseable JSON without control characters.
-      2. Keep responses clean and concise so they do not cut off.
+      CRITICAL STYLE & FORMATTING RULES (Learned from Viral Threads Data):
+      1. Short & Readable: 
+         - Main body MUST be extremely concise (2 to 3 lines max per post).
+         - Use punchy, witty, and relatable tone (e.g., ~じゃなくて, ~らしい, ~すぎる, ~かも, ~はこちら).
+      2. Emojis:
+         - Insert 1 or 2 high-impact emojis per line (e.g., 🥺🐟, 😆, 🥺💖, 🧼, 👇).
+      3. First Comment Hook Rule:
+         - Keep it witty, casual, and short with a pointing finger emoji pointing to the link (e.g., "ゴジラの正体これ👇🦖", "ずっと一緒のお魚👇💙", "モデル気分にさせたい子はこちら👇🩷").
+      4. Valid JSON Output Only:
+         - Ensure clean JSON syntax without unescaped newlines or control characters.
 
       Required JSON Structure:
       {
-        "historyTitle": "제품명/주제 한글 요약 (15자이내)",
+        "historyTitle": "제품/주제 한글 요약 (15자이내)",
         "koreanTranslation": "원문 한국어 번역",
-        "viralAnalysis": "바이럴 핵심 포인트 분석 (한국어)",
+        "viralAnalysis": "2030 바이럴 핵심 포인트 분석 (한국어)",
         "searchKeywords": {
-          "xiaohongshu": "샤오홍슈 검색어",
-          "amazonJapan": "일본 아마존 검색어",
-          "amazonUS": "미국 아마존 검색어"
+          "xiaohongshu": "샤오홍슈 중국어 검색어",
+          "amazonJapan": "일본 아마존 일본어 검색어",
+          "amazonUS": "미국 아마존 영어 검색어"
         },
         "japaneseShortCopies": [
-          {"id": 1, "angle": "앵글", "copy": "일본어 본문", "copyKo": "한국어 번역", "firstComment": "첫댓글", "firstCommentKo": "댓글 번역"}
+          {"id": 1, "angle": "앵글명", "copy": "일본어 초단문 본문", "copyKo": "한국어 번역", "firstComment": "첫댓글 후킹 문구", "firstCommentKo": "댓글 번역"}
         ],
         "japaneseParagraphCopies": [
-          {"id": 1, "angle": "앵글", "copy": "3단 줄바꿈 일본어 본문", "copyKo": "한국어 번역", "firstComment": "첫댓글", "firstCommentKo": "댓글 번역"}
+          {"id": 1, "angle": "앵글명", "copy": "일본어 2~3줄 감성/공감 본문", "copyKo": "한국어 번역", "firstComment": "첫댓글 후킹 문구", "firstCommentKo": "댓글 번역"}
         ],
         "englishCopies": [
-          {"id": 1, "angle": "앵글", "copy": "영어 본문", "copyKo": "한국어 번역", "firstComment": "첫댓글", "firstCommentKo": "댓글 번역"}
+          {"id": 1, "angle": "앵글명", "copy": "영어 바이럴 본문", "copyKo": "한국어 번역", "firstComment": "첫댓글 후킹 문구", "firstCommentKo": "댓글 번역"}
         ]
       }
 
@@ -126,7 +128,6 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 503 및 모델 불응 방지용 후보군
     const candidateModels = ['gemini-3.6-flash', 'gemini-2.5-flash'];
     let result = null;
     let lastError = null;
@@ -160,8 +161,6 @@ export async function POST(req: NextRequest) {
     }
 
     const responseText = result.response.text() || '{}';
-    
-    // 강건한 JSON 정제 및 파싱 실행
     const jsonResult = cleanAndFixJson(responseText);
 
     return NextResponse.json(jsonResult);
