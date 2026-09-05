@@ -1,7 +1,56 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-export const maxDuration = 60; // 타임아웃 60초 확대
+export const maxDuration = 60; // Vercel 타임아웃 60초
+
+// 문장 잘림이나 이스케이프 문제로 인한 깨진 JSON 복구 함수
+function cleanAndFixJson(rawText: string) {
+  let cleanText = rawText
+    .replace(/```json/gi, '')
+    .replace(/```/g, '')
+    .trim();
+
+  // JSON 시작점 찾기
+  const firstOpenBrace = cleanText.indexOf('{');
+  if (firstOpenBrace !== -1) {
+    cleanText = cleanText.substring(firstOpenBrace);
+  }
+
+  // 1차 시도: 일반 파싱
+  try {
+    return JSON.parse(cleanText);
+  } catch (e) {
+    // 2차 시도: 제어문자 및 줄바꿈 이스케이프 정제
+    try {
+      const sanitized = cleanText
+        .replace(/[\u0000-\u001F]+/g, ' ')
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r')
+        .replace(/\t/g, '\\t');
+      return JSON.parse(sanitized);
+    } catch (e2) {
+      // 3차 시도: 끝부분이 잘렸을 경우 괄호 닫아주기 시도
+      let lastCloseBrace = cleanText.lastIndexOf('}');
+      if (lastCloseBrace !== -1) {
+        let truncated = cleanText.substring(0, lastCloseBrace + 1);
+        try {
+          return JSON.parse(truncated);
+        } catch (e3) {
+          // 정규식으로 유효한 JSON 객체만 추출
+          const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            try {
+              return JSON.parse(jsonMatch[0]);
+            } catch (e4) {
+              throw new Error('JSON 구조 정제 실패');
+            }
+          }
+        }
+      }
+      throw new Error('AI 응답이 완결되지 않았거나 JSON 형식이 올바르지 않습니다.');
+    }
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,29 +65,22 @@ export async function POST(req: NextRequest) {
 
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'Gemini API Key가 필요합니다.' },
+        { error: 'Gemini API Key가 필요합니다. 화면 상단에서 입력해 주세요.' },
         { status: 400 }
       );
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    
-    // 출력 길이 최대화 및 최신 모델 설정
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-3.6-flash',
-      generationConfig: {
-        responseMimeType: 'application/json',
-        maxOutputTokens: 8192, // 토큰 잘림 방지
-      },
-    });
 
     const systemInstruction = `
       You are an expert social media copywriter.
       Generate viral copies based on user input.
 
-      CRITICAL: You MUST complete the entire JSON response fully without cutting off.
+      CRITICAL REQUIREMENTS:
+      1. You MUST generate valid, parseable JSON without control characters.
+      2. Keep responses clean and concise so they do not cut off.
 
-      JSON Structure Required:
+      Required JSON Structure:
       {
         "historyTitle": "제품명/주제 한글 요약 (15자이내)",
         "koreanTranslation": "원문 한국어 번역",
@@ -63,7 +105,6 @@ export async function POST(req: NextRequest) {
       - japaneseShortCopies: Exactly 8 items
       - japaneseParagraphCopies: Exactly 8 items
       - englishCopies: Exactly 8 items
-      Ensure all text fields are concise and strictly complete the JSON.
     `;
 
     const contents: any[] = [];
@@ -85,22 +126,43 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const result = await model.generateContent(contents);
-    const responseText = result.response.text() || '{}';
+    // 503 및 모델 불응 방지용 후보군
+    const candidateModels = ['gemini-3.6-flash', 'gemini-2.5-flash'];
+    let result = null;
+    let lastError = null;
 
-    let cleanJsonText = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
-
-    let jsonResult;
-    try {
-      jsonResult = JSON.parse(cleanJsonText);
-    } catch (parseError) {
-      const jsonMatch = cleanJsonText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        jsonResult = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error('응답이 중간에 끊겼습니다. 생성 버튼을 다시 한번 눌러주세요.');
+    for (const modelName of candidateModels) {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const model = genAI.getGenerativeModel({
+            model: modelName,
+            generationConfig: {
+              responseMimeType: 'application/json',
+              maxOutputTokens: 8192,
+            },
+          });
+          result = await model.generateContent(contents);
+          if (result) break;
+        } catch (err: any) {
+          lastError = err;
+          if (err.message?.includes('503') || err.status === 503) {
+            await new Promise((res) => setTimeout(res, 1200));
+            continue;
+          }
+          break;
+        }
       }
+      if (result) break;
     }
+
+    if (!result) {
+      throw lastError || new Error('AI 서버 연결이 원활하지 않습니다. 잠시 후 다시 시도해 주세요.');
+    }
+
+    const responseText = result.response.text() || '{}';
+    
+    // 강건한 JSON 정제 및 파싱 실행
+    const jsonResult = cleanAndFixJson(responseText);
 
     return NextResponse.json(jsonResult);
   } catch (error: any) {
