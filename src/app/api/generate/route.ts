@@ -1,9 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-
-// JSON 파싱 안정화 함수
 function cleanAndFixJson(text: string) {
   try {
     const cleaned = text.replace(/```json\n?|\n?```/g, "").trim();
@@ -16,9 +13,20 @@ function cleanAndFixJson(text: string) {
 
 export async function POST(req: Request) {
   try {
-    const { imageBase64, mimeType, sourceUrl, rawText, mode } = await req.json();
+    const { imageBase64, mimeType, sourceUrl, rawText, mode, userApiKey } = await req.json();
 
-    // gemini-3.6-flash 최신 모델 사용
+    // 입력된 사용자 API 키가 있으면 최우선 사용, 없으면 환경변수 사용
+    const activeApiKey = userApiKey?.trim() || process.env.GEMINI_API_KEY || "";
+
+    if (!activeApiKey) {
+      return NextResponse.json(
+        { error: "Gemini API 키가 입력되지 않았습니다. 상단 입력창에 API 키를 입력해 주세요." },
+        { status: 400 }
+      );
+    }
+
+    const genAI = new GoogleGenerativeAI(activeApiKey);
+
     const model = genAI.getGenerativeModel({
       model: "gemini-3.6-flash",
       generationConfig: { responseMimeType: "application/json" }
