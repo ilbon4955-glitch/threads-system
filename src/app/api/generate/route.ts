@@ -11,6 +11,22 @@ function cleanAndFixJson(text: string) {
   }
 }
 
+// 503 과부하 발생 시 자동 재시도 함수
+async function generateWithRetry(model: any, contents: any[], retries = 3, delay = 2000): Promise<any> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await model.generateContent(contents);
+    } catch (error: any) {
+      if ((error.message?.includes("503") || error.status === 503) && i < retries - 1) {
+        console.warn(`503 Overload occurred. Retrying in ${delay}ms... (Attempt ${i + 1}/${retries})`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      } else {
+        throw error;
+      }
+    }
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const { imageBase64, mimeType, sourceUrl, rawText, mode, userApiKey } = await req.json();
@@ -160,7 +176,8 @@ Return JSON in the EXACT structure below:
       });
     }
 
-    const result = await model.generateContent(contents);
+    // 503 자동 재시도 로직 적용 호출
+    const result = await generateWithRetry(model, contents);
     const responseText = result.response.text();
     const jsonResult = cleanAndFixJson(responseText);
 
