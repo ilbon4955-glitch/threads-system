@@ -16,20 +16,17 @@ export default function Home() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"jp" | "en">("jp");
 
-  // 페이지 로드 시 로컬스토리지에서 기존 입력한 API 키 가져오기
   useEffect(() => {
     const savedKey = localStorage.getItem("gemini_user_api_key");
     if (savedKey) setUserApiKey(savedKey);
   }, []);
 
-  // API 키 변경 시 로컬스토리지에 저장
   const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setUserApiKey(value);
     localStorage.setItem("gemini_user_api_key", value);
   };
 
-  // 이미지 업로드 처리
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -40,7 +37,6 @@ export default function Home() {
     }
   };
 
-  // 복사 처리
   const handleCopy = (e: React.MouseEvent, text: string, id: string) => {
     e.preventDefault();
     e.stopPropagation();
@@ -49,7 +45,6 @@ export default function Home() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  // 생성 요청
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!preview && !rawText && !sourceUrl) {
@@ -119,34 +114,32 @@ export default function Home() {
       {/* 2. 중앙 메인 컨텐츠 영역 */}
       <main className="flex-1 overflow-y-auto p-8 space-y-6">
         <div className="max-w-4xl mx-auto space-y-6">
-          <header className="border-b pb-4">
-            <h1 className="text-2xl font-bold text-gray-900">
-              글로벌 바이럴 생성기 (Threads Viral Lab)
-            </h1>
-            <p className="text-xs text-gray-500 mt-1">
-              원문, 링크, 이미지 분석 기반 4가지 페르소나 바이럴 대본 자동 생성
-            </p>
-          </header>
-
-          {/* 입력 폼 */}
-          <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl border shadow-sm space-y-4">
-            {/* ★ 핵심: Gemini API Key 입력란 ★ */}
-            <div className="bg-amber-50 p-3.5 rounded-lg border border-amber-200">
-              <label className="block text-xs font-bold text-amber-900 mb-1">
-                🔑 Gemini API Key (개인 키 입력)
-              </label>
+          {/* 상단 헤더 & 컴팩트 API 키 설정 */}
+          <header className="flex justify-between items-start border-b pb-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                글로벌 바이럴 생성기 (Threads Viral Lab)
+              </h1>
+              <p className="text-xs text-gray-500 mt-1">
+                원문, 링크, 이미지 분석 기반 4가지 페르소나 바이럴 대본 자동 생성
+              </p>
+            </div>
+            
+            {/* 컴팩트 API Key 입력창 */}
+            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border shadow-sm">
+              <span className="text-xs font-semibold text-gray-600">🔑 API Key:</span>
               <input
                 type="password"
                 value={userApiKey}
                 onChange={handleApiKeyChange}
-                placeholder="AIzaSy... (본인의 Gemini API 키를 입력하세요)"
-                className="w-full p-2.5 text-xs border border-amber-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                placeholder="Gemini API Key 입력"
+                className="w-40 text-xs p-1 border rounded bg-gray-50 focus:bg-white focus:outline-none"
               />
-              <p className="text-[10px] text-amber-700 mt-1">
-                * 입력한 API 키는 브라우저에 안전하게 저장되며, 본인 전용으로 사용됩니다.
-              </p>
             </div>
+          </header>
 
+          {/* 입력 폼 */}
+          <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl border shadow-sm space-y-4">
             {/* 모드 선택 */}
             <div className="grid grid-cols-2 gap-3">
               <button
@@ -225,13 +218,21 @@ export default function Home() {
           {/* 결과 영역 */}
           {result && (
             <div className="space-y-6">
-              {/* 요약 및 바이럴 요인 */}
-              <section className="bg-blue-50 p-5 rounded-xl border border-blue-100 space-y-2">
-                <h2 className="font-bold text-sm text-blue-900">🔍 원문 요약 및 바이럴 분석</h2>
-                <p className="text-xs text-gray-700">{result.product_analysis?.summary_ko}</p>
+              {/* 복원된 원문 한국어 번역 & 바이럴 요약 분석 */}
+              <section className="bg-blue-50 p-5 rounded-xl border border-blue-100 space-y-3">
+                <h2 className="font-bold text-sm text-blue-900">🔍 원문 번역 및 바이럴 요약 분석</h2>
+                {result.product_analysis?.original_translation_ko && (
+                  <div className="bg-white p-3 rounded border text-xs text-gray-700">
+                    <span className="font-bold text-indigo-600 block mb-1">[원문 한국어 번역]</span>
+                    {result.product_analysis.original_translation_ko}
+                  </div>
+                )}
+                <p className="text-xs text-gray-700 leading-relaxed">
+                  {result.product_analysis?.summary_ko}
+                </p>
                 <div className="flex gap-2 flex-wrap pt-1">
                   {result.product_analysis?.viral_factors?.map((v: string, idx: number) => (
-                    <span key={idx} className="bg-blue-200 text-blue-800 text-[11px] px-2 py-0.5 rounded-full">
+                    <span key={idx} className="bg-blue-200 text-blue-800 text-[11px] px-2.5 py-0.5 rounded-full">
                       #{v}
                     </span>
                   ))}
@@ -284,29 +285,64 @@ export default function Home() {
                 </button>
               </div>
 
-              {/* 일본어 16종 (4 페르소나) */}
+              {/* 일본어 16종 (본문 + 개별 댓글 카드 복원) */}
               {activeTab === "jp" && (
                 <div className="space-y-6">
                   {result.japanese_copies?.map((group: any, gIdx: number) => (
-                    <div key={gIdx} className="bg-white p-5 rounded-xl border space-y-3">
+                    <div key={gIdx} className="bg-white p-5 rounded-xl border space-y-4">
                       <h3 className="font-bold text-sm text-indigo-600 border-b pb-2">
                         {group.persona_title_ko || group.persona}
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {group.copies?.map((item: any, cIdx: number) => {
-                          const id = `jp-${gIdx}-${cIdx}`;
+                          const mainId = `jp-main-${gIdx}-${cIdx}`;
+                          const commentId = `jp-comment-${gIdx}-${cIdx}`;
+                          const allId = `jp-all-${gIdx}-${cIdx}`;
+                          const fullText = `${item.jp}\n\n[첫 댓글]\n${item.comment}`;
+
                           return (
-                            <div key={cIdx} className="bg-gray-50 p-3 rounded-lg border flex flex-col justify-between">
-                              <div>
-                                <p className="text-[11px] text-gray-400 mb-1">해석: {item.jp_ko}</p>
-                                <p className="whitespace-pre-wrap text-xs text-gray-800 font-medium">{item.jp}</p>
+                            <div key={cIdx} className="bg-gray-50 p-4 rounded-xl border flex flex-col justify-between space-y-3 shadow-sm">
+                              {/* 본문 영역 */}
+                              <div className="space-y-1">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-[10px] text-gray-400">본문 해석: {item.jp_ko}</span>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleCopy(e, item.jp, mainId)}
+                                    className="text-[10px] text-indigo-600 hover:underline font-bold"
+                                  >
+                                    {copiedId === mainId ? "복사됨!" : "본문만 복사"}
+                                  </button>
+                                </div>
+                                <p className="whitespace-pre-wrap text-xs text-gray-800 font-medium leading-relaxed bg-white p-2.5 rounded border">
+                                  {item.jp}
+                                </p>
                               </div>
+
+                              {/* 복원된 1:1 개별 댓글 영역 */}
+                              <div className="space-y-1 pt-1 border-t border-gray-200">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-[10px] text-gray-400">💬 첫 댓글 (후킹): {item.comment_ko}</span>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleCopy(e, item.comment, commentId)}
+                                    className="text-[10px] text-gray-500 hover:underline"
+                                  >
+                                    {copiedId === commentId ? "복사됨!" : "댓글만 복사"}
+                                  </button>
+                                </div>
+                                <p className="text-xs text-gray-700 bg-gray-100 p-2 rounded">
+                                  {item.comment}
+                                </p>
+                              </div>
+
+                              {/* 전체 복사 버튼 */}
                               <button
                                 type="button"
-                                onClick={(e) => handleCopy(e, item.jp, id)}
-                                className="mt-3 w-full py-1 text-xs bg-black text-white rounded hover:bg-gray-800"
+                                onClick={(e) => handleCopy(e, fullText, allId)}
+                                className="w-full py-2 text-xs bg-black text-white font-bold rounded hover:bg-gray-800 transition"
                               >
-                                {copiedId === id ? "복사 완료!" : "카피 복사"}
+                                {copiedId === allId ? "복사 완료!" : "전체 복사 (본문 + 댓글)"}
                               </button>
                             </div>
                           );
@@ -317,54 +353,61 @@ export default function Home() {
                 </div>
               )}
 
-              {/* 영어 8종 */}
+              {/* 영어 8종 (본문 + 개별 댓글 복원) */}
               {activeTab === "en" && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {result.english_copies?.map((item: any, idx: number) => {
-                    const id = `en-${idx}`;
+                    const mainId = `en-main-${idx}`;
+                    const commentId = `en-comment-${idx}`;
+                    const allId = `en-all-${idx}`;
+                    const fullText = `${item.en}\n\n[Comment]\n${item.comment}`;
+
                     return (
-                      <div key={idx} className="bg-white p-4 rounded-xl border flex flex-col justify-between space-y-2">
-                        <div>
-                          <p className="text-[11px] text-gray-400 mb-1">해석: {item.en_ko}</p>
-                          <p className="whitespace-pre-wrap text-xs text-gray-800 font-medium">{item.en}</p>
+                      <div key={idx} className="bg-white p-4 rounded-xl border flex flex-col justify-between space-y-3 shadow-sm">
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[10px] text-gray-400">본문 해석: {item.en_ko}</span>
+                            <button
+                              type="button"
+                              onClick={(e) => handleCopy(e, item.en, mainId)}
+                              className="text-[10px] text-indigo-600 hover:underline font-bold"
+                            >
+                              {copiedId === mainId ? "복사됨!" : "본문만 복사"}
+                            </button>
+                          </div>
+                          <p className="whitespace-pre-wrap text-xs text-gray-800 font-medium leading-relaxed bg-gray-50 p-2.5 rounded border">
+                            {item.en}
+                          </p>
                         </div>
+
+                        <div className="space-y-1 pt-1 border-t border-gray-100">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[10px] text-gray-400">💬 첫 댓글: {item.comment_ko}</span>
+                            <button
+                              type="button"
+                              onClick={(e) => handleCopy(e, item.comment, commentId)}
+                              className="text-[10px] text-gray-500 hover:underline"
+                            >
+                              {copiedId === commentId ? "복사됨!" : "댓글만 복사"}
+                            </button>
+                          </div>
+                          <p className="text-xs text-gray-700 bg-gray-100 p-2 rounded">
+                            {item.comment}
+                          </p>
+                        </div>
+
                         <button
                           type="button"
-                          onClick={(e) => handleCopy(e, item.en, id)}
-                          className="w-full py-1 text-xs bg-black text-white rounded hover:bg-gray-800"
+                          onClick={(e) => handleCopy(e, fullText, allId)}
+                          className="w-full py-2 text-xs bg-black text-white font-bold rounded hover:bg-gray-800 transition"
                         >
-                          {copiedId === id ? "복사 완료!" : "카피 복사"}
+                          {copiedId === allId ? "복사 완료!" : "전체 복사 (본문 + 댓글)"}
                         </button>
                       </div>
                     );
                   })}
                 </div>
               )}
-
-              {/* 댓글 섹션 */}
-              <section className="bg-white p-5 rounded-xl border space-y-3">
-                <h2 className="font-bold text-xs text-gray-800">💬 댓글용 자연스러운 실사용 후기</h2>
-                <div className="space-y-2">
-                  {result.comments?.map((c: any, idx: number) => {
-                    const id = `comment-${idx}`;
-                    return (
-                      <div key={idx} className="flex justify-between items-center bg-gray-50 p-2.5 rounded border text-xs">
-                        <div>
-                          <p className="text-[10px] text-gray-400">{c.jp_comment_ko}</p>
-                          <p className="font-medium text-gray-800">{c.jp_comment}</p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={(e) => handleCopy(e, c.jp_comment, id)}
-                          className="text-[10px] bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded"
-                        >
-                          {copiedId === id ? "복사됨" : "복사"}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
             </div>
           )}
         </div>
