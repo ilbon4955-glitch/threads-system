@@ -1,173 +1,139 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { NextResponse } from "next/server";
 
-export const maxDuration = 60; // Vercel 타임아웃 60초
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
-// 문장 잘림이나 이스케이프 문제로 인한 깨진 JSON 복구 함수
-function cleanAndFixJson(rawText: string) {
-  let cleanText = rawText
-    .replace(/```json/gi, '')
-    .replace(/```/g, '')
-    .trim();
-
-  const firstOpenBrace = cleanText.indexOf('{');
-  if (firstOpenBrace !== -1) {
-    cleanText = cleanText.substring(firstOpenBrace);
-  }
-
+export async function POST(req: Request) {
   try {
-    return JSON.parse(cleanText);
-  } catch (e) {
-    try {
-      const sanitized = cleanText
-        .replace(/[\u0000-\u001F]+/g, ' ')
-        .replace(/\n/g, '\\n')
-        .replace(/\r/g, '\\r')
-        .replace(/\t/g, '\\t');
-      return JSON.parse(sanitized);
-    } catch (e2) {
-      let lastCloseBrace = cleanText.lastIndexOf('}');
-      if (lastCloseBrace !== -1) {
-        let truncated = cleanText.substring(0, lastCloseBrace + 1);
-        try {
-          return JSON.parse(truncated);
-        } catch (e3) {
-          const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            try {
-              return JSON.parse(jsonMatch[0]);
-            } catch (e4) {
-              throw new Error('JSON 구조 정제 실패');
-            }
-          }
-        }
-      }
-      throw new Error('AI 응답이 완결되지 않았거나 JSON 형식이 올바르지 않습니다.');
+    const { imageBase64, mimeType } = await req.json();
+
+    // gemini-3.6-flash 최신 모델 적용
+    const model = genAI.getGenerativeModel({
+      model: "gemini-3.6-flash",
+      generationConfig: { responseMimeType: "application/json" }
+    });
+
+    const prompt = `
+You are a top-tier Japanese Threads Viral Marketing Specialist who produces 1M+ views posts.
+Analyze the provided image to generate 16 Japanese Threads copies categorized into 4 distinct personas (4 copies each), 8 English copies, source search keywords, and 1-line user comments.
+
+CRITICAL LANGUAGE & STYLE RULES FOR JAPANESE COPIES:
+1. ABSOLUTELY NO Korean, English, or unnatural translated Japanese in Japanese copies.
+2. Use 100% native, highly authentic Japanese spoken on Japanese Threads/X (Twitter).
+3. DO NOT use formal corporate Japanese like '〜をおすすめします' or '〜です/ます' everywhere. Mix native casual tones ('〜すぎた', '〜マジで良き', '〜正直ビビった', '〜件').
+4. Utilize viral hooks, short line breaks, real user reactions, high-engagement words (保存必須, QOL爆上がり, ぶっちゃけ, 正直もっと早く買えばよかった).
+5. For each copy, provide its exact Korean translation in a separate field ('jp_ko') purely for UI display.
+
+CRITICAL RULES FOR COMMENTS:
+1. Generate 1-line natural user impressions/comments without any URL or promotional spam triggers.
+
+PERSONA STRUCTURE (4 Personas x 4 Copies = 16 Total):
+
+[Persona 1: Information_LifeHacks (꿀팁/정보 공유형 - 높은 저장률)]
+- Focus: "I wish I knew this earlier", "God-tier item", high-save value.
+- Style: Casual, clear bullet-like line breaks, high usability praise.
+
+[Persona 2: Honest_Reviewer (내돈내산/체험형 - 높은 신뢰도)]
+- Focus: "Thought it was just viral hype, but it's legit", honest pros/cons vibe.
+- Style: Relatable, real testing tone, high-credibility impression.
+
+[Persona 3: Trend_FOMO (트렌드/지름 유도형 - 품절대란/참여 유도)]
+- Focus: "Why is this sold out everywhere?", "Z-generation viral focus".
+- Style: Short, punchy, high curiosity hook.
+
+[Persona 4: PainPoint_Solver (문제 해결/비포아프터형 - 고민 해결)]
+- Focus: "For those struggling with X, this is the final solution".
+- Style: Direct callout to target audience, QOL boost focus.
+
+Return JSON in the EXACT structure below:
+{
+  "product_analysis": {
+    "summary_ko": "이미지 분석 및 원문 요약 (한국어)",
+    "viral_factors": ["바이럴 포인트 1", "바이럴 포인트 2"]
+  },
+  "search_keywords": {
+    "xiaohongshu": "Xiaohongshu search keyword",
+    "amazon_jp": "Amazon JP search keyword",
+    "amazon_us": "Amazon US search keyword"
+  },
+  "japanese_copies": [
+    {
+      "persona": "Information_LifeHacks",
+      "persona_title_ko": "꿀팁/정보 공유형 (높은 저장률)",
+      "copies": [
+        { "jp": "Pure Native Japanese copy 1", "jp_ko": "한국어 번역 1" },
+        { "jp": "Pure Native Japanese copy 2", "jp_ko": "한국어 번역 2" },
+        { "jp": "Pure Native Japanese copy 3", "jp_ko": "한국어 번역 3" },
+        { "jp": "Pure Native Japanese copy 4", "jp_ko": "한국어 번역 4" }
+      ]
+    },
+    {
+      "persona": "Honest_Reviewer",
+      "persona_title_ko": "내돈내산/체험형 (높은 신뢰도)",
+      "copies": [
+        { "jp": "Pure Native Japanese copy 1", "jp_ko": "한국어 번역 1" },
+        { "jp": "Pure Native Japanese copy 2", "jp_ko": "한국어 번역 2" },
+        { "jp": "Pure Native Japanese copy 3", "jp_ko": "한국어 번역 3" },
+        { "jp": "Pure Native Japanese copy 4", "jp_ko": "한국어 번역 4" }
+      ]
+    },
+    {
+      "persona": "Trend_FOMO",
+      "persona_title_ko": "트렌드/지름 유도형 (품절대란/참여)",
+      "copies": [
+        { "jp": "Pure Native Japanese copy 1", "jp_ko": "한국어 번역 1" },
+        { "jp": "Pure Native Japanese copy 2", "jp_ko": "한국어 번역 2" },
+        { "jp": "Pure Native Japanese copy 3", "jp_ko": "한국어 번역 3" },
+        { "jp": "Pure Native Japanese copy 4", "jp_ko": "한국어 번역 4" }
+      ]
+    },
+    {
+      "persona": "PainPoint_Solver",
+      "persona_title_ko": "문제 해결/비포아프터형 (고민 해결)",
+      "copies": [
+        { "jp": "Pure Native Japanese copy 1", "jp_ko": "한국어 번역 1" },
+        { "jp": "Pure Native Japanese copy 2", "jp_ko": "한국어 번역 2" },
+        { "jp": "Pure Native Japanese copy 3", "jp_ko": "한국어 번역 3" },
+        { "jp": "Pure Native Japanese copy 4", "jp_ko": "한국어 번역 4" }
+      ]
     }
-  }
+  ],
+  "english_copies": [
+    { "en": "English Threads Copy 1", "en_ko": "한국어 번역 1" },
+    { "en": "English Threads Copy 2", "en_ko": "한국어 번역 2" },
+    { "en": "English Threads Copy 3", "en_ko": "한국어 번역 3" },
+    { "en": "English Threads Copy 4", "en_ko": "한국어 번역 4" },
+    { "en": "English Threads Copy 5", "en_ko": "한국어 번역 5" },
+    { "en": "English Threads Copy 6", "en_ko": "한국어 번역 6" },
+    { "en": "English Threads Copy 7", "en_ko": "한국어 번역 7" },
+    { "en": "English Threads Copy 8", "en_ko": "한국어 번역 8" }
+  ],
+  "comments": [
+    { "jp_comment": "Natural 1-line Japanese comment 1", "jp_comment_ko": "한국어 번역 1" },
+    { "jp_comment": "Natural 1-line Japanese comment 2", "jp_comment_ko": "한국어 번역 2" },
+    { "jp_comment": "Natural 1-line Japanese comment 3", "jp_comment_ko": "한국어 번역 3" }
+  ]
 }
+`;
 
-export async function POST(req: NextRequest) {
-  try {
-    const formData = await req.formData();
-    const text = (formData.get('text') as string) || '';
-    const mode = (formData.get('mode') as string) || 'A';
-    const apiKeyInput = (formData.get('apiKey') as string) || '';
-    const linkUrl = (formData.get('linkUrl') as string) || '';
-    const file = formData.get('file') as File | null;
-
-    const apiKey = apiKeyInput || process.env.GEMINI_API_KEY;
-
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: 'Gemini API Key가 필요합니다. 화면 상단에서 입력해 주세요.' },
-        { status: 400 }
-      );
-    }
-
-    const genAI = new GoogleGenerativeAI(apiKey);
-
-    // 2030 바이럴 쓰레드 최적화 시스템 지침
-    const systemInstruction = `
-      You are a top-tier Japanese & Global Threads viral copywriter targeting 20s and 30s users.
-
-      CRITICAL STYLE & FORMATTING RULES (Learned from Viral Threads Data):
-      1. Short & Readable: 
-         - Main body MUST be extremely concise (2 to 3 lines max per post).
-         - Use punchy, witty, and relatable tone (e.g., ~じゃなくて, ~らしい, ~すぎる, ~かも, ~はこちら).
-      2. Emojis:
-         - Insert 1 or 2 high-impact emojis per line (e.g., 🥺🐟, 😆, 🥺💖, 🧼, 👇).
-      3. First Comment Hook Rule:
-         - Keep it witty, casual, and short with a pointing finger emoji pointing to the link (e.g., "ゴジラの正体これ👇🦖", "ずっと一緒のお魚👇💙", "モデル気分にさせたい子はこちら👇🩷").
-      4. Valid JSON Output Only:
-         - Ensure clean JSON syntax without unescaped newlines or control characters.
-
-      Required JSON Structure:
-      {
-        "historyTitle": "제품/주제 한글 요약 (15자이내)",
-        "koreanTranslation": "원문 한국어 번역",
-        "viralAnalysis": "2030 바이럴 핵심 포인트 분석 (한국어)",
-        "searchKeywords": {
-          "xiaohongshu": "샤오홍슈 중국어 검색어",
-          "amazonJapan": "일본 아마존 일본어 검색어",
-          "amazonUS": "미국 아마존 영어 검색어"
-        },
-        "japaneseShortCopies": [
-          {"id": 1, "angle": "앵글명", "copy": "일본어 초단문 본문", "copyKo": "한국어 번역", "firstComment": "첫댓글 후킹 문구", "firstCommentKo": "댓글 번역"}
-        ],
-        "japaneseParagraphCopies": [
-          {"id": 1, "angle": "앵글명", "copy": "일본어 2~3줄 감성/공감 본문", "copyKo": "한국어 번역", "firstComment": "첫댓글 후킹 문구", "firstCommentKo": "댓글 번역"}
-        ],
-        "englishCopies": [
-          {"id": 1, "angle": "앵글명", "copy": "영어 바이럴 본문", "copyKo": "한국어 번역", "firstComment": "첫댓글 후킹 문구", "firstCommentKo": "댓글 번역"}
-        ]
+    const imagePart = {
+      inlineData: {
+        data: imageBase64.replace(/^data:image\/\w+;base64,/, ""),
+        mimeType: mimeType || "image/jpeg"
       }
+    };
 
-      Count Guidelines:
-      - japaneseShortCopies: Exactly 8 items
-      - japaneseParagraphCopies: Exactly 8 items
-      - englishCopies: Exactly 8 items
-    `;
+    const result = await model.generateContent([prompt, imagePart]);
+    const responseText = result.response.text();
 
-    const contents: any[] = [];
-    let promptText = `System Instructions:\n${systemInstruction}\n\n[USER INPUT]\n`;
-    if (text) promptText += `Text:\n${text}\n\n`;
-    if (linkUrl) promptText += `Link:\n${linkUrl}\n\n`;
-    promptText += `Mode: ${mode}`;
+    const cleanJson = responseText.replace(/```json\n?|\n?```/g, "").trim();
+    const data = JSON.parse(cleanJson);
 
-    contents.push(promptText);
-
-    if (file) {
-      const arrayBuffer = await file.arrayBuffer();
-      const base64Data = Buffer.from(arrayBuffer).toString('base64');
-      contents.push({
-        inlineData: {
-          mimeType: file.type || 'image/jpeg',
-          data: base64Data,
-        },
-      });
-    }
-
-    const candidateModels = ['gemini-3.6-flash', 'gemini-2.5-flash'];
-    let result = null;
-    let lastError = null;
-
-    for (const modelName of candidateModels) {
-      for (let attempt = 0; attempt < 2; attempt++) {
-        try {
-          const model = genAI.getGenerativeModel({
-            model: modelName,
-            generationConfig: {
-              responseMimeType: 'application/json',
-              maxOutputTokens: 8192,
-            },
-          });
-          result = await model.generateContent(contents);
-          if (result) break;
-        } catch (err: any) {
-          lastError = err;
-          if (err.message?.includes('503') || err.status === 503) {
-            await new Promise((res) => setTimeout(res, 1200));
-            continue;
-          }
-          break;
-        }
-      }
-      if (result) break;
-    }
-
-    if (!result) {
-      throw lastError || new Error('AI 서버 연결이 원활하지 않습니다. 잠시 후 다시 시도해 주세요.');
-    }
-
-    const responseText = result.response.text() || '{}';
-    const jsonResult = cleanAndFixJson(responseText);
-
-    return NextResponse.json(jsonResult);
+    return NextResponse.json(data);
   } catch (error: any) {
-    console.error('Generation Error:', error);
+    console.error("Generation Error:", error);
     return NextResponse.json(
-      { error: error.message || '카피 생성 중 오류가 발생했습니다.' },
+      { error: error.message || "카피 생성 중 오류가 발생했습니다." },
       { status: 500 }
     );
   }
