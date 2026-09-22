@@ -32,20 +32,27 @@ export async function POST(req: Request) {
     });
 
     const prompt = `
-You are a top-tier Japanese & Global Threads Viral Marketing Specialist who produces 1M+ views posts.
-Analyze the provided content (image/text/url context) and generate a viral package for Threads.
+You are a top-tier Viral Marketing Specialist for both Japanese and US/Global Threads who produces 1M+ views posts.
+Analyze the provided content (image/text/url context) and generate a complete viral package for Threads.
 
-CRITICAL RULES:
-1. Provide exact Korean translation/summary of original content in 'summary_ko' and 'original_translation_ko'.
-2. EVERY copy in 'japanese_copies' MUST have its own 1-line native Japanese comment in 'comment' (and its Korean translation in 'comment_ko').
-3. Japanese copies must use 100% native spoken Japanese (e.g., 〜マジで良き, 〜説, 〜すぎた, 保存必須). NO unnatural translated formal Japanese.
-4. Comments must be 1-line natural user impressions without any URL or promotional spam triggers.
+CRITICAL CORE RULES:
+1. Provide exact Korean translation/summary of original content in 'original_translation_ko' and 'summary_ko'.
+2. ALL Japanese copies (16 total) and ALL English copies (8 total) MUST have their OWN 1-line native user comment in 'comment' (and its Korean translation in 'comment_ko').
+3. Japanese copies MUST use 100% native spoken Japanese (〜マジで良き, 〜説, 〜すぎた, 保存必須). NO unnatural translated formal Japanese.
+4. English copies MUST use natural, viral US Threads/TikTok style slang & hooks (e.g., "obsessed", "game changer", "run don't walk", "I thought it was overhyped, but...").
+5. All comments MUST be 1-line natural user impressions without any URL or promotional spam triggers.
 
 PERSONA STRUCTURE FOR JAPANESE COPIES (4 Personas x 4 Copies = 16 Total):
 [Persona 1: Information_LifeHacks (꿀팁/정보 공유형)]
 [Persona 2: Honest_Reviewer (내돈내산/체험형)]
 [Persona 3: Trend_FOMO (트렌드/지름 유도형)]
 [Persona 4: PainPoint_Solver (문제 해결/비포아프터형)]
+
+PERSONA STRUCTURE FOR ENGLISH COPIES (4 Personas x 2 Copies = 8 Total):
+[Persona 1: HolyGrail_GameChanger (최애템/삶의 질 상승형 - High Saves)]
+[Persona 2: Honest_HypeCheck (솔직검증/내돈내산형 - High Trust)]
+[Persona 3: Trend_FOMO (주인공 심리/지름 유도형 - Run don't walk)]
+[Persona 4: PainPoint_Solver (고민 파괴/비포아프터형 - Solution)]
 
 Return JSON in the EXACT structure below:
 {
@@ -64,30 +71,10 @@ Return JSON in the EXACT structure below:
       "persona": "Information_LifeHacks",
       "persona_title_ko": "꿀팁/정보 공유형 (높은 저장률)",
       "copies": [
-        {
-          "jp": "Pure Native Japanese copy 1",
-          "jp_ko": "본문 한국어 번역 1",
-          "comment": "Natural 1-line Japanese comment 1",
-          "comment_ko": "댓글 한국어 번역 1"
-        },
-        {
-          "jp": "Pure Native Japanese copy 2",
-          "jp_ko": "본문 한국어 번역 2",
-          "comment": "Natural 1-line Japanese comment 2",
-          "comment_ko": "댓글 한국어 번역 2"
-        },
-        {
-          "jp": "Pure Native Japanese copy 3",
-          "jp_ko": "본문 한국어 번역 3",
-          "comment": "Natural 1-line Japanese comment 3",
-          "comment_ko": "댓글 한국어 번역 3"
-        },
-        {
-          "jp": "Pure Native Japanese copy 4",
-          "jp_ko": "본문 한국어 번역 4",
-          "comment": "Natural 1-line Japanese comment 4",
-          "comment_ko": "댓글 한국어 번역 4"
-        }
+        { "jp": "Pure Native Japanese copy 1", "jp_ko": "한국어 번역 1", "comment": "1-line Japanese comment 1", "comment_ko": "댓글 번역 1" },
+        { "jp": "Pure Native Japanese copy 2", "jp_ko": "한국어 번역 2", "comment": "1-line Japanese comment 2", "comment_ko": "댓글 번역 2" },
+        { "jp": "Pure Native Japanese copy 3", "jp_ko": "한국어 번역 3", "comment": "1-line Japanese comment 3", "comment_ko": "댓글 번역 3" },
+        { "jp": "Pure Native Japanese copy 4", "jp_ko": "한국어 번역 4", "comment": "1-line Japanese comment 4", "comment_ko": "댓글 번역 4" }
       ]
     },
     {
@@ -123,18 +110,37 @@ Return JSON in the EXACT structure below:
   ],
   "english_copies": [
     {
-      "en": "English Threads Copy 1",
-      "en_ko": "본문 한국어 번역 1",
-      "comment": "Natural 1-line English comment 1",
-      "comment_ko": "댓글 한국어 번역 1"
+      "persona": "HolyGrail_GameChanger",
+      "persona_title_ko": "최애템/삶의 질 상승형 (Holy Grail)",
+      "copies": [
+        { "en": "Viral US English Copy 1", "en_ko": "한국어 번역 1", "comment": "Natural 1-line English comment 1", "comment_ko": "댓글 번역 1" },
+        { "en": "Viral US English Copy 2", "en_ko": "한국어 번역 2", "comment": "Natural 1-line English comment 2", "comment_ko": "댓글 번역 2" }
+      ]
     },
-    { "en": "English Copy 2", "en_ko": "번역 2", "comment": "English Comment 2", "comment_ko": "댓글 번역 2" },
-    { "en": "English Copy 3", "en_ko": "번역 3", "comment": "English Comment 3", "comment_ko": "댓글 번역 3" },
-    { "en": "English Copy 4", "en_ko": "번역 4", "comment": "English Comment 4", "comment_ko": "댓글 번역 4" },
-    { "en": "English Copy 5", "en_ko": "번역 5", "comment": "English Comment 5", "comment_ko": "댓글 번역 5" },
-    { "en": "English Copy 6", "en_ko": "번역 6", "comment": "English Comment 6", "comment_ko": "댓글 번역 6" },
-    { "en": "English Copy 7", "en_ko": "번역 7", "comment": "English Comment 7", "comment_ko": "댓글 번역 7" },
-    { "en": "English Copy 8", "en_ko": "번역 8", "comment": "English Comment 8", "comment_ko": "댓글 번역 8" }
+    {
+      "persona": "Honest_HypeCheck",
+      "persona_title_ko": "솔직검증/내돈내산형 (Honest Review)",
+      "copies": [
+        { "en": "Viral US English Copy 1", "en_ko": "한국어 번역 1", "comment": "Natural 1-line English comment 1", "comment_ko": "댓글 번역 1" },
+        { "en": "Viral US English Copy 2", "en_ko": "한국어 번역 2", "comment": "Natural 1-line English comment 2", "comment_ko": "댓글 번역 2" }
+      ]
+    },
+    {
+      "persona": "Trend_FOMO",
+      "persona_title_ko": "주인공 심리/지름 유도형 (Run Don't Walk)",
+      "copies": [
+        { "en": "Viral US English Copy 1", "en_ko": "한국어 번역 1", "comment": "Natural 1-line English comment 1", "comment_ko": "댓글 번역 1" },
+        { "en": "Viral US English Copy 2", "en_ko": "한국어 번역 2", "comment": "Natural 1-line English comment 2", "comment_ko": "댓글 번역 2" }
+      ]
+    },
+    {
+      "persona": "PainPoint_Solver",
+      "persona_title_ko": "고민 파괴/비포아프터형 (Problem Solver)",
+      "copies": [
+        { "en": "Viral US English Copy 1", "en_ko": "한국어 번역 1", "comment": "Natural 1-line English comment 1", "comment_ko": "댓글 번역 1" },
+        { "en": "Viral US English Copy 2", "en_ko": "한국어 번역 2", "comment": "Natural 1-line English comment 2", "comment_ko": "댓글 번역 2" }
+      ]
+    }
   ]
 }
 `;
