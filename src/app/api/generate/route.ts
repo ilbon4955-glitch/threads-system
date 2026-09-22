@@ -3,19 +3,30 @@ import { NextResponse } from "next/server";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
+// JSON 파싱 안정화 함수
+function cleanAndFixJson(text: string) {
+  try {
+    const cleaned = text.replace(/```json\n?|\n?```/g, "").trim();
+    return JSON.parse(cleaned);
+  } catch (e) {
+    console.error("JSON Parsing Error:", e);
+    throw new Error("AI 응답 형식이 올바르지 않습니다.");
+  }
+}
+
 export async function POST(req: Request) {
   try {
-    const { imageBase64, mimeType } = await req.json();
+    const { imageBase64, mimeType, sourceUrl, rawText, mode } = await req.json();
 
-    // gemini-3.6-flash 최신 모델 적용
+    // gemini-3.6-flash 최신 모델 사용
     const model = genAI.getGenerativeModel({
       model: "gemini-3.6-flash",
       generationConfig: { responseMimeType: "application/json" }
     });
 
     const prompt = `
-You are a top-tier Japanese Threads Viral Marketing Specialist who produces 1M+ views posts.
-Analyze the provided image to generate 16 Japanese Threads copies categorized into 4 distinct personas (4 copies each), 8 English copies, source search keywords, and 1-line user comments.
+You are a top-tier Japanese & Global Threads Viral Marketing Specialist who produces 1M+ views posts.
+Analyze the provided content (image/text/url context) and generate a viral package for Threads.
 
 CRITICAL LANGUAGE & STYLE RULES FOR JAPANESE COPIES:
 1. ABSOLUTELY NO Korean, English, or unnatural translated Japanese in Japanese copies.
@@ -27,28 +38,16 @@ CRITICAL LANGUAGE & STYLE RULES FOR JAPANESE COPIES:
 CRITICAL RULES FOR COMMENTS:
 1. Generate 1-line natural user impressions/comments without any URL or promotional spam triggers.
 
-PERSONA STRUCTURE (4 Personas x 4 Copies = 16 Total):
-
+PERSONA STRUCTURE FOR JAPANESE COPIES (4 Personas x 4 Copies = 16 Total):
 [Persona 1: Information_LifeHacks (꿀팁/정보 공유형 - 높은 저장률)]
-- Focus: "I wish I knew this earlier", "God-tier item", high-save value.
-- Style: Casual, clear bullet-like line breaks, high usability praise.
-
 [Persona 2: Honest_Reviewer (내돈내산/체험형 - 높은 신뢰도)]
-- Focus: "Thought it was just viral hype, but it's legit", honest pros/cons vibe.
-- Style: Relatable, real testing tone, high-credibility impression.
-
-[Persona 3: Trend_FOMO (트렌드/지름 유도형 - 품절대란/참여 유도)]
-- Focus: "Why is this sold out everywhere?", "Z-generation viral focus".
-- Style: Short, punchy, high curiosity hook.
-
+[Persona 3: Trend_FOMO (트렌드/지름 유도형 - 품절대란/참여)]
 [Persona 4: PainPoint_Solver (문제 해결/비포아프터형 - 고민 해결)]
-- Focus: "For those struggling with X, this is the final solution".
-- Style: Direct callout to target audience, QOL boost focus.
 
 Return JSON in the EXACT structure below:
 {
   "product_analysis": {
-    "summary_ko": "이미지 분석 및 원문 요약 (한국어)",
+    "summary_ko": "원문/이미지 요약 및 분석 (한국어)",
     "viral_factors": ["바이럴 포인트 1", "바이럴 포인트 2"]
   },
   "search_keywords": {
@@ -116,20 +115,26 @@ Return JSON in the EXACT structure below:
 }
 `;
 
-    const imagePart = {
-      inlineData: {
-        data: imageBase64.replace(/^data:image\/\w+;base64,/, ""),
-        mimeType: mimeType || "image/jpeg"
-      }
-    };
+    const contents: any[] = [prompt];
 
-    const result = await model.generateContent([prompt, imagePart]);
+    if (rawText) contents.push(`Raw Text Context: ${rawText}`);
+    if (sourceUrl) contents.push(`Source URL: ${sourceUrl}`);
+    if (mode) contents.push(`Mode: ${mode}`);
+
+    if (imageBase64) {
+      contents.push({
+        inlineData: {
+          data: imageBase64.replace(/^data:image\/\w+;base64,/, ""),
+          mimeType: mimeType || "image/jpeg"
+        }
+      });
+    }
+
+    const result = await model.generateContent(contents);
     const responseText = result.response.text();
+    const jsonResult = cleanAndFixJson(responseText);
 
-    const cleanJson = responseText.replace(/```json\n?|\n?```/g, "").trim();
-    const data = JSON.parse(cleanJson);
-
-    return NextResponse.json(data);
+    return NextResponse.json(jsonResult);
   } catch (error: any) {
     console.error("Generation Error:", error);
     return NextResponse.json(
