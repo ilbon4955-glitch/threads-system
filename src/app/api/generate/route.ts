@@ -11,19 +11,16 @@ function cleanAndFixJson(text: string) {
   }
 }
 
-// 503 및 과부하 발생 시 지연 재시도 함수
-async function generateWithRetry(model: any, contents: any[], retries = 5, delay = 2500): Promise<any> {
+// 503/429 감지 자동 재시도
+async function generateWithRetry(model: any, contents: any[], retries = 3, delay = 1500): Promise<any> {
   for (let i = 0; i < retries; i++) {
     try {
       return await model.generateContent(contents);
     } catch (error: any) {
-      const is503 = error.message?.includes("503") || error.status === 503 || error.message?.includes("Service Unavailable");
-      const is429 = error.message?.includes("429") || error.status === 429;
-
-      if ((is503 || is429) && i < retries - 1) {
-        console.warn(`[Gemini Overload] Retrying in ${delay}ms... (Attempt ${i + 1}/${retries})`);
+      const isOverload = error.message?.includes("503") || error.status === 503 || error.message?.includes("429") || error.status === 429;
+      if (isOverload && i < retries - 1) {
         await new Promise((resolve) => setTimeout(resolve, delay));
-        delay += 1500;
+        delay += 1000;
       } else {
         throw error;
       }
@@ -45,143 +42,159 @@ export async function POST(req: Request) {
     }
 
     const genAI = new GoogleGenerativeAI(activeApiKey);
-
     const model = genAI.getGenerativeModel({
       model: "gemini-3.6-flash",
-      generationConfig: { 
-        responseMimeType: "application/json",
-        temperature: 0.7
-      }
+      generationConfig: { responseMimeType: "application/json", temperature: 0.7 }
     });
 
-    const prompt = `
-You are a top-tier Global Threads Viral Marketing Specialist (1M+ views analyst).
-Analyze the provided image/text/url context and generate a fast, lightweight, high-performance viral payload.
+    // 공통 컨텐츠 유틸리티
+    const buildContents = (systemPrompt: string) => {
+      const list: any[] = [systemPrompt];
+      if (rawText) list.push(`Raw Text Context: ${rawText}`);
+      if (sourceUrl) list.push(`Source URL: ${sourceUrl}`);
+      if (mode) list.push(`Mode: ${mode}`);
+      if (imageBase64) {
+        list.push({
+          inlineData: {
+            data: imageBase64.replace(/^data:image\/\w+;base64,/, ""),
+            mimeType: mimeType || "image/jpeg"
+          }
+        });
+      }
+      return list;
+    };
 
-REQUIREMENTS:
-1. 'original_translation_ko': Clear Korean translation of the original content.
-2. 'summary_ko': Concise 2-3 sentence Korean explanation on WHY this post went viral.
-3. 'viral_factors': 3 core viral hashtags in Korean.
-4. JAPANESE COPIES (16 total, 4 personas x 4 copies):
-   - Personas: Information_LifeHacks (꿀팁/정보), Honest_Reviewer (내돈내산/체험), Trend_FOMO (트렌드/지름), PainPoint_Solver (문제해결/비포아프터)
-   - Style: 100% native spoken casual Japanese on Threads/X.
-   - Each copy must include a 1-line native comment ('comment') and its Korean translation ('comment_ko').
-5. ENGLISH COPIES (8 total, 4 personas x 2 copies):
-   - Personas: HolyGrail_GameChanger (최애템/삶의질), Honest_HypeCheck (솔직검증/내돈내산), Trend_FOMO (주인공심리/FOMO), PainPoint_Solver (고민파괴)
-   - Style: Natural US Threads/TikTok slang & hooks.
-   - Each copy must include a 1-line native comment ('comment') and its Korean translation ('comment_ko').
-
-Return JSON strictly matching this structure:
+    // 1. 원문 분석 및 키워드 프롬프트
+    const promptAnalysis = `
+Analyze the provided content and return JSON:
 {
   "product_analysis": {
-    "original_translation_ko": "원문 한국어 완벽 번역",
-    "summary_ko": "바이럴 원인 심층 요약 (한국어 2-3줄)",
-    "viral_factors": ["바이럴포인트1", "바이럴포인트2", "바이럴포인트3"]
+    "original_translation_ko": "Complete Korean translation of the original content/text",
+    "summary_ko": "Detailed 2-3 sentence Korean analysis explaining WHY this post went viral (visuals, psychology, hooks)",
+    "viral_factors": ["Viral factor 1 in Korean", "Viral factor 2", "Viral factor 3"]
   },
   "search_keywords": {
     "xiaohongshu": "Xiaohongshu search keyword",
     "amazon_jp": "Amazon JP search keyword",
     "amazon_us": "Amazon US search keyword"
-  },
+  }
+}`;
+
+    // 2. 일본어 16종 (4 페르소나 x 4개) 프롬프트
+    const promptJapanese = `
+Generate 16 native Japanese Threads viral copies based on the provided content.
+Rule: 100% native spoken casual Japanese on Threads/X (e.g., 〜マジで良き, 〜説, 〜すぎた, 保存必須).
+Structure: 4 Personas x 4 Copies = 16 Total. Each copy MUST have its OWN 1-line native comment ('comment') and Korean translation ('comment_ko').
+
+Return JSON:
+{
   "japanese_copies": [
     {
       "persona": "Information_LifeHacks",
       "persona_title_ko": "꿀팁/정보 공유형 (높은 저장률)",
       "copies": [
-        { "jp": "Japanese copy 1", "jp_ko": "한국어 번역 1", "comment": "1-line comment 1", "comment_ko": "댓글 번역 1" },
-        { "jp": "Japanese copy 2", "jp_ko": "한국어 번역 2", "comment": "1-line comment 2", "comment_ko": "댓글 번역 2" },
-        { "jp": "Japanese copy 3", "jp_ko": "한국어 번역 3", "comment": "1-line comment 3", "comment_ko": "댓글 번역 3" },
-        { "jp": "Japanese copy 4", "jp_ko": "한국어 번역 4", "comment": "1-line comment 4", "comment_ko": "댓글 번역 4" }
+        { "jp": "Native JP Copy 1", "jp_ko": "한국어 번역 1", "comment": "1-line JP comment 1", "comment_ko": "댓글 번역 1" },
+        { "jp": "Native JP Copy 2", "jp_ko": "한국어 번역 2", "comment": "1-line JP comment 2", "comment_ko": "댓글 번역 2" },
+        { "jp": "Native JP Copy 3", "jp_ko": "한국어 번역 3", "comment": "1-line JP comment 3", "comment_ko": "댓글 번역 3" },
+        { "jp": "Native JP Copy 4", "jp_ko": "한국어 번역 4", "comment": "1-line JP comment 4", "comment_ko": "댓글 번역 4" }
       ]
     },
     {
       "persona": "Honest_Reviewer",
       "persona_title_ko": "내돈내산/체험형 (높은 신뢰도)",
       "copies": [
-        { "jp": "Japanese copy 1", "jp_ko": "번역 1", "comment": "comment 1", "comment_ko": "댓글 번역 1" },
-        { "jp": "Japanese copy 2", "jp_ko": "번역 2", "comment": "comment 2", "comment_ko": "댓글 번역 2" },
-        { "jp": "Japanese copy 3", "jp_ko": "번역 3", "comment": "comment 3", "comment_ko": "댓글 번역 3" },
-        { "jp": "Japanese copy 4", "jp_ko": "번역 4", "comment": "comment 4", "comment_ko": "댓글 번역 4" }
+        { "jp": "Copy 1", "jp_ko": "번역 1", "comment": "Comment 1", "comment_ko": "댓글 번역 1" },
+        { "jp": "Copy 2", "jp_ko": "번역 2", "comment": "Comment 2", "comment_ko": "댓글 번역 2" },
+        { "jp": "Copy 3", "jp_ko": "번역 3", "comment": "Comment 3", "comment_ko": "댓글 번역 3" },
+        { "jp": "Copy 4", "jp_ko": "번역 4", "comment": "Comment 4", "comment_ko": "댓글 번역 4" }
       ]
     },
     {
       "persona": "Trend_FOMO",
       "persona_title_ko": "트렌드/지름 유도형 (품절대란/참여)",
       "copies": [
-        { "jp": "Japanese copy 1", "jp_ko": "번역 1", "comment": "comment 1", "comment_ko": "댓글 번역 1" },
-        { "jp": "Japanese copy 2", "jp_ko": "번역 2", "comment": "comment 2", "comment_ko": "댓글 번역 2" },
-        { "jp": "Japanese copy 3", "jp_ko": "번역 3", "comment": "comment 3", "comment_ko": "댓글 번역 3" },
-        { "jp": "Japanese copy 4", "jp_ko": "번역 4", "comment": "comment 4", "comment_ko": "댓글 번역 4" }
+        { "jp": "Copy 1", "jp_ko": "번역 1", "comment": "Comment 1", "comment_ko": "댓글 번역 1" },
+        { "jp": "Copy 2", "jp_ko": "번역 2", "comment": "Comment 2", "comment_ko": "댓글 번역 2" },
+        { "jp": "Copy 3", "jp_ko": "번역 3", "comment": "Comment 3", "comment_ko": "댓글 번역 3" },
+        { "jp": "Copy 4", "jp_ko": "번역 4", "comment": "Comment 4", "comment_ko": "댓글 번역 4" }
       ]
     },
     {
       "persona": "PainPoint_Solver",
       "persona_title_ko": "문제 해결/비포아프터형 (고민 해결)",
       "copies": [
-        { "jp": "Japanese copy 1", "jp_ko": "번역 1", "comment": "comment 1", "comment_ko": "댓글 번역 1" },
-        { "jp": "Japanese copy 2", "jp_ko": "번역 2", "comment": "comment 2", "comment_ko": "댓글 번역 2" },
-        { "jp": "Japanese copy 3", "jp_ko": "번역 3", "comment": "comment 3", "comment_ko": "댓글 번역 3" },
-        { "jp": "Japanese copy 4", "jp_ko": "번역 4", "comment": "comment 4", "comment_ko": "댓글 번역 4" }
+        { "jp": "Copy 1", "jp_ko": "번역 1", "comment": "Comment 1", "comment_ko": "댓글 번역 1" },
+        { "jp": "Copy 2", "jp_ko": "번역 2", "comment": "Comment 2", "comment_ko": "댓글 번역 2" },
+        { "jp": "Copy 3", "jp_ko": "번역 3", "comment": "Comment 3", "comment_ko": "댓글 번역 3" },
+        { "jp": "Copy 4", "jp_ko": "번역 4", "comment": "Comment 4", "comment_ko": "댓글 번역 4" }
       ]
     }
-  ],
+  ]
+}`;
+
+    // 3. 영어 8종 (4 페르소나 x 2개) 프롬프트
+    const promptEnglish = `
+Generate 8 viral US English Threads copies based on the provided content.
+Rule: Natural US Threads/TikTok slang & hooks (obsessed, game changer, run don't walk).
+Structure: 4 Personas x 2 Copies = 8 Total. Each copy MUST have its OWN 1-line native comment ('comment') and Korean translation ('comment_ko').
+
+Return JSON:
+{
   "english_copies": [
     {
       "persona": "HolyGrail_GameChanger",
       "persona_title_ko": "최애템/삶의 질 상승형 (Holy Grail)",
       "copies": [
-        { "en": "English copy 1", "en_ko": "번역 1", "comment": "comment 1", "comment_ko": "댓글 번역 1" },
-        { "en": "English copy 2", "en_ko": "번역 2", "comment": "comment 2", "comment_ko": "댓글 번역 2" }
+        { "en": "US Copy 1", "en_ko": "한국어 번역 1", "comment": "1-line EN comment 1", "comment_ko": "댓글 번역 1" },
+        { "en": "US Copy 2", "en_ko": "한국어 번역 2", "comment": "1-line EN comment 2", "comment_ko": "댓글 번역 2" }
       ]
     },
     {
       "persona": "Honest_HypeCheck",
       "persona_title_ko": "솔직검증/내돈내산형 (Honest Review)",
       "copies": [
-        { "en": "English copy 1", "en_ko": "번역 1", "comment": "comment 1", "comment_ko": "댓글 번역 1" },
-        { "en": "English copy 2", "en_ko": "번역 2", "comment": "comment 2", "comment_ko": "댓글 번역 2" }
+        { "en": "US Copy 1", "en_ko": "번역 1", "comment": "Comment 1", "comment_ko": "댓글 번역 1" },
+        { "en": "US Copy 2", "en_ko": "번역 2", "comment": "Comment 2", "comment_ko": "댓글 번역 2" }
       ]
     },
     {
       "persona": "Trend_FOMO",
       "persona_title_ko": "주인공 심리/지름 유도형 (Run Don't Walk)",
       "copies": [
-        { "en": "English copy 1", "en_ko": "번역 1", "comment": "comment 1", "comment_ko": "댓글 번역 1" },
-        { "en": "English copy 2", "en_ko": "번역 2", "comment": "comment 2", "comment_ko": "댓글 번역 2" }
+        { "en": "US Copy 1", "en_ko": "번역 1", "comment": "Comment 1", "comment_ko": "댓글 번역 1" },
+        { "en": "US Copy 2", "en_ko": "번역 2", "comment": "Comment 2", "comment_ko": "댓글 번역 2" }
       ]
     },
     {
       "persona": "PainPoint_Solver",
       "persona_title_ko": "고민 파괴/비포아프터형 (Problem Solver)",
       "copies": [
-        { "en": "English copy 1", "en_ko": "번역 1", "comment": "comment 1", "comment_ko": "댓글 번역 1" },
-        { "en": "English copy 2", "en_ko": "번역 2", "comment": "comment 2", "comment_ko": "댓글 번역 2" }
+        { "en": "US Copy 1", "en_ko": "번역 1", "comment": "Comment 1", "comment_ko": "댓글 번역 1" },
+        { "en": "US Copy 2", "en_ko": "번역 2", "comment": "Comment 2", "comment_ko": "댓글 번역 2" }
       ]
     }
   ]
-}
-`;
+}`;
 
-    const contents: any[] = [prompt];
+    // ★ 핵심: 503 에러 방지를 위해 3개 작업으로 가볍게 분할하여 병렬 실행!
+    const [resAnalysis, resJP, resEN] = await Promise.all([
+      generateWithRetry(model, buildContents(promptAnalysis)),
+      generateWithRetry(model, buildContents(promptJapanese)),
+      generateWithRetry(model, buildContents(promptEnglish))
+    ]);
 
-    if (rawText) contents.push(`Raw Text Context: ${rawText}`);
-    if (sourceUrl) contents.push(`Source URL: ${sourceUrl}`);
-    if (mode) contents.push(`Mode: ${mode}`);
+    const dataAnalysis = cleanAndFixJson(resAnalysis.response.text());
+    const dataJP = cleanAndFixJson(resJP.response.text());
+    const dataEN = cleanAndFixJson(resEN.response.text());
 
-    if (imageBase64) {
-      contents.push({
-        inlineData: {
-          data: imageBase64.replace(/^data:image\/\w+;base64,/, ""),
-          mimeType: mimeType || "image/jpeg"
-        }
-      });
-    }
+    // 결과 하나로 병합
+    const finalResult = {
+      ...dataAnalysis,
+      ...dataJP,
+      ...dataEN
+    };
 
-    const result = await generateWithRetry(model, contents);
-    const responseText = result.response.text();
-    const jsonResult = cleanAndFixJson(responseText);
-
-    return NextResponse.json(jsonResult);
+    return NextResponse.json(finalResult);
   } catch (error: any) {
     console.error("Generation Error:", error);
     return NextResponse.json(
