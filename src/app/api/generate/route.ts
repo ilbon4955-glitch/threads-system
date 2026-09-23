@@ -11,15 +11,19 @@ function cleanAndFixJson(text: string) {
   }
 }
 
-// 503 및 일시적 과부하 시 자동 재시도 함수
-async function generateWithRetry(model: any, contents: any[], retries = 3, delay = 2000): Promise<any> {
+// 503 및 과부하 발생 시 최대 5회 자동 재시도 (백그라운드 지연 재시도)
+async function generateWithRetry(model: any, contents: any[], retries = 5, delay = 3000): Promise<any> {
   for (let i = 0; i < retries; i++) {
     try {
       return await model.generateContent(contents);
     } catch (error: any) {
-      if ((error.message?.includes("503") || error.status === 503) && i < retries - 1) {
-        console.warn(`503 Overload occurred. Retrying in ${delay}ms... (Attempt ${i + 1}/${retries})`);
+      const is503 = error.message?.includes("503") || error.status === 503 || error.message?.includes("Service Unavailable");
+      const is429 = error.message?.includes("429") || error.status === 429;
+
+      if ((is503 || is429) && i < retries - 1) {
+        console.warn(`[Gemini Server Busy] Retrying in ${delay}ms... (Attempt ${i + 1}/${retries})`);
         await new Promise((resolve) => setTimeout(resolve, delay));
+        delay += 1000; // 재시도마다 지연 시간 1초씩 누적 증가
       } else {
         throw error;
       }
@@ -179,6 +183,7 @@ Return JSON in the EXACT structure below:
       });
     }
 
+    // 5회 자동 재시도 호출 실행
     const result = await generateWithRetry(model, contents);
     const responseText = result.response.text();
     const jsonResult = cleanAndFixJson(responseText);
