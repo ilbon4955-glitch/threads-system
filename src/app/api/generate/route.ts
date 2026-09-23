@@ -11,7 +11,7 @@ function cleanAndFixJson(text: string) {
   }
 }
 
-// 503 과부하 발생 시 자동 재시도 함수
+// 503 및 일시적 과부하 시 자동 재시도 함수
 async function generateWithRetry(model: any, contents: any[], retries = 3, delay = 2000): Promise<any> {
   for (let i = 0; i < retries; i++) {
     try {
@@ -48,34 +48,37 @@ export async function POST(req: Request) {
     });
 
     const prompt = `
-You are a top-tier Viral Marketing Specialist for both Japanese and US/Global Threads who produces 1M+ views posts.
-Analyze the provided content (image/text/url context) and generate a complete viral package for Threads.
+You are a top-tier Global Threads Viral Marketing Specialist (1M+ views analyst).
+Analyze the provided content (image/text/url) thoroughly and explain WHY this content went viral in Korean.
 
-CRITICAL CORE RULES:
-1. Provide exact Korean translation/summary of original content in 'original_translation_ko' and 'summary_ko'.
-2. ALL Japanese copies (16 total) and ALL English copies (8 total) MUST have their OWN 1-line native user comment in 'comment' (and its Korean translation in 'comment_ko').
-3. Japanese copies MUST use 100% native spoken Japanese (〜マジで良き, 〜説, 〜すぎた, 保存必須). NO unnatural translated formal Japanese.
-4. English copies MUST use natural, viral US Threads/TikTok style slang & hooks (e.g., "obsessed", "game changer", "run don't walk", "I thought it was overhyped, but...").
-5. All comments MUST be 1-line natural user impressions without any URL or promotional spam triggers.
+CRITICAL ANALYSIS INSTRUCTIONS:
+1. 'original_translation_ko': Complete and accurate Korean translation of the provided text/image text.
+2. 'summary_ko': Detailed Korean analysis explaining WHY this specific post went viral (e.g., visual contrast, relatable psychology, curiosity hook, FOMO trigger, pain point resolution).
+3. 'viral_factors': 3 to 4 core viral hashtags in Korean (e.g., ["원색 대비 비주얼", "심리적 공감대", "품절 유도 훅"]).
 
-PERSONA STRUCTURE FOR JAPANESE COPIES (4 Personas x 4 Copies = 16 Total):
-[Persona 1: Information_LifeHacks (꿀팁/정보 공유형)]
-[Persona 2: Honest_Reviewer (내돈내산/체험형)]
-[Persona 3: Trend_FOMO (트렌드/지름 유도형)]
-[Persona 4: PainPoint_Solver (문제 해결/비포아프터형)]
+COPY GENERATION INSTRUCTIONS:
+1. JAPANESE COPIES (16 total, 4 Personas x 4 Copies):
+   - Persona 1: Information_LifeHacks (꿀팁/정보 공유형 - 높은 저장률)
+   - Persona 2: Honest_Reviewer (내돈내산/체험형 - 높은 신뢰도)
+   - Persona 3: Trend_FOMO (트렌드/지름 유도형 - 품절대란/참여)
+   - Persona 4: PainPoint_Solver (문제 해결/비포아프터형 - 고민 해결)
+   - Must use 100% native casual Japanese spoken on Threads/X (e.g., 〜マジで良き, 〜説, 〜すぎた, 保存必須).
+   - EVERY copy MUST have its OWN 1-line native Japanese comment ('comment') and its Korean translation ('comment_ko').
 
-PERSONA STRUCTURE FOR ENGLISH COPIES (4 Personas x 2 Copies = 8 Total):
-[Persona 1: HolyGrail_GameChanger (최애템/삶의 질 상승형 - High Saves)]
-[Persona 2: Honest_HypeCheck (솔직검증/내돈내산형 - High Trust)]
-[Persona 3: Trend_FOMO (주인공 심리/지름 유도형 - Run don't walk)]
-[Persona 4: PainPoint_Solver (고민 파괴/비포아프터형 - Solution)]
+2. ENGLISH COPIES (8 total, 4 Personas x 2 Copies):
+   - Persona 1: HolyGrail_GameChanger (최애템/삶의 질 상승형 - Holy Grail)
+   - Persona 2: Honest_HypeCheck (솔직검증/내돈내산형 - Honest Review)
+   - Persona 3: Trend_FOMO (주인공 심리/지름 유도형 - Run Don't Walk)
+   - Persona 4: PainPoint_Solver (고민 파괴/비포아프터형 - Problem Solver)
+   - Must use natural US Threads/TikTok slang & hooks (e.g., "obsessed", "game changer", "run don't walk", "I thought it was overhyped, but...").
+   - EVERY copy MUST have its OWN 1-line native English comment ('comment') and its Korean translation ('comment_ko').
 
 Return JSON in the EXACT structure below:
 {
   "product_analysis": {
     "original_translation_ko": "원문 한국어 완벽 번역",
-    "summary_ko": "핵심 내용 및 바이럴 요인 요약 (한국어)",
-    "viral_factors": ["바이럴 포인트 1", "바이럴 포인트 2"]
+    "summary_ko": "이 글이 왜 바이럴되었는지 심층 분석 (바이럴 원인, 유저 심리, 비주얼 요소 상세 설명)",
+    "viral_factors": ["핵심 바이럴 요인 1", "핵심 바이럴 요인 2", "핵심 바이럴 요인 3"]
   },
   "search_keywords": {
     "xiaohongshu": "Xiaohongshu search keyword",
@@ -87,40 +90,40 @@ Return JSON in the EXACT structure below:
       "persona": "Information_LifeHacks",
       "persona_title_ko": "꿀팁/정보 공유형 (높은 저장률)",
       "copies": [
-        { "jp": "Pure Native Japanese copy 1", "jp_ko": "한국어 번역 1", "comment": "1-line Japanese comment 1", "comment_ko": "댓글 번역 1" },
-        { "jp": "Pure Native Japanese copy 2", "jp_ko": "한국어 번역 2", "comment": "1-line Japanese comment 2", "comment_ko": "댓글 번역 2" },
-        { "jp": "Pure Native Japanese copy 3", "jp_ko": "한국어 번역 3", "comment": "1-line Japanese comment 3", "comment_ko": "댓글 번역 3" },
-        { "jp": "Pure Native Japanese copy 4", "jp_ko": "한국어 번역 4", "comment": "1-line Japanese comment 4", "comment_ko": "댓글 번역 4" }
+        { "jp": "Native Japanese copy 1", "jp_ko": "한국어 번역 1", "comment": "1-line Japanese comment 1", "comment_ko": "댓글 번역 1" },
+        { "jp": "Native Japanese copy 2", "jp_ko": "한국어 번역 2", "comment": "1-line Japanese comment 2", "comment_ko": "댓글 번역 2" },
+        { "jp": "Native Japanese copy 3", "jp_ko": "한국어 번역 3", "comment": "1-line Japanese comment 3", "comment_ko": "댓글 번역 3" },
+        { "jp": "Native Japanese copy 4", "jp_ko": "한국어 번역 4", "comment": "1-line Japanese comment 4", "comment_ko": "댓글 번역 4" }
       ]
     },
     {
       "persona": "Honest_Reviewer",
       "persona_title_ko": "내돈내산/체험형 (높은 신뢰도)",
       "copies": [
-        { "jp": "Japanese copy", "jp_ko": "한국어 번역", "comment": "Japanese comment", "comment_ko": "댓글 번역" },
-        { "jp": "Japanese copy", "jp_ko": "한국어 번역", "comment": "Japanese comment", "comment_ko": "댓글 번역" },
-        { "jp": "Japanese copy", "jp_ko": "한국어 번역", "comment": "Japanese comment", "comment_ko": "댓글 번역" },
-        { "jp": "Japanese copy", "jp_ko": "한국어 번역", "comment": "Japanese comment", "comment_ko": "댓글 번역" }
+        { "jp": "Japanese copy 1", "jp_ko": "번역 1", "comment": "comment 1", "comment_ko": "댓글 번역 1" },
+        { "jp": "Japanese copy 2", "jp_ko": "번역 2", "comment": "comment 2", "comment_ko": "댓글 번역 2" },
+        { "jp": "Japanese copy 3", "jp_ko": "번역 3", "comment": "comment 3", "comment_ko": "댓글 번역 3" },
+        { "jp": "Japanese copy 4", "jp_ko": "번역 4", "comment": "comment 4", "comment_ko": "댓글 번역 4" }
       ]
     },
     {
       "persona": "Trend_FOMO",
       "persona_title_ko": "트렌드/지름 유도형 (품절대란/참여)",
       "copies": [
-        { "jp": "Japanese copy", "jp_ko": "한국어 번역", "comment": "Japanese comment", "comment_ko": "댓글 번역" },
-        { "jp": "Japanese copy", "jp_ko": "한국어 번역", "comment": "Japanese comment", "comment_ko": "댓글 번역" },
-        { "jp": "Japanese copy", "jp_ko": "한국어 번역", "comment": "Japanese comment", "comment_ko": "댓글 번역" },
-        { "jp": "Japanese copy", "jp_ko": "한국어 번역", "comment": "Japanese comment", "comment_ko": "댓글 번역" }
+        { "jp": "Japanese copy 1", "jp_ko": "번역 1", "comment": "comment 1", "comment_ko": "댓글 번역 1" },
+        { "jp": "Japanese copy 2", "jp_ko": "번역 2", "comment": "comment 2", "comment_ko": "댓글 번역 2" },
+        { "jp": "Japanese copy 3", "jp_ko": "번역 3", "comment": "comment 3", "comment_ko": "댓글 번역 3" },
+        { "jp": "Japanese copy 4", "jp_ko": "번역 4", "comment": "comment 4", "comment_ko": "댓글 번역 4" }
       ]
     },
     {
       "persona": "PainPoint_Solver",
       "persona_title_ko": "문제 해결/비포아프터형 (고민 해결)",
       "copies": [
-        { "jp": "Japanese copy", "jp_ko": "한국어 번역", "comment": "Japanese comment", "comment_ko": "댓글 번역" },
-        { "jp": "Japanese copy", "jp_ko": "한국어 번역", "comment": "Japanese comment", "comment_ko": "댓글 번역" },
-        { "jp": "Japanese copy", "jp_ko": "한국어 번역", "comment": "Japanese comment", "comment_ko": "댓글 번역" },
-        { "jp": "Japanese copy", "jp_ko": "한국어 번역", "comment": "Japanese comment", "comment_ko": "댓글 번역" }
+        { "jp": "Japanese copy 1", "jp_ko": "번역 1", "comment": "comment 1", "comment_ko": "댓글 번역 1" },
+        { "jp": "Japanese copy 2", "jp_ko": "번역 2", "comment": "comment 2", "comment_ko": "댓글 번역 2" },
+        { "jp": "Japanese copy 3", "jp_ko": "번역 3", "comment": "comment 3", "comment_ko": "댓글 번역 3" },
+        { "jp": "Japanese copy 4", "jp_ko": "번역 4", "comment": "comment 4", "comment_ko": "댓글 번역 4" }
       ]
     }
   ],
@@ -129,32 +132,32 @@ Return JSON in the EXACT structure below:
       "persona": "HolyGrail_GameChanger",
       "persona_title_ko": "최애템/삶의 질 상승형 (Holy Grail)",
       "copies": [
-        { "en": "Viral US English Copy 1", "en_ko": "한국어 번역 1", "comment": "Natural 1-line English comment 1", "comment_ko": "댓글 번역 1" },
-        { "en": "Viral US English Copy 2", "en_ko": "한국어 번역 2", "comment": "Natural 1-line English comment 2", "comment_ko": "댓글 번역 2" }
+        { "en": "US English Copy 1", "en_ko": "한국어 번역 1", "comment": "1-line English comment 1", "comment_ko": "댓글 번역 1" },
+        { "en": "US English Copy 2", "en_ko": "한국어 번역 2", "comment": "1-line English comment 2", "comment_ko": "댓글 번역 2" }
       ]
     },
     {
       "persona": "Honest_HypeCheck",
       "persona_title_ko": "솔직검증/내돈내산형 (Honest Review)",
       "copies": [
-        { "en": "Viral US English Copy 1", "en_ko": "한국어 번역 1", "comment": "Natural 1-line English comment 1", "comment_ko": "댓글 번역 1" },
-        { "en": "Viral US English Copy 2", "en_ko": "한국어 번역 2", "comment": "Natural 1-line English comment 2", "comment_ko": "댓글 번역 2" }
+        { "en": "US English Copy 1", "en_ko": "한국어 번역 1", "comment": "1-line English comment 1", "comment_ko": "댓글 번역 1" },
+        { "en": "US English Copy 2", "en_ko": "한국어 번역 2", "comment": "1-line English comment 2", "comment_ko": "댓글 번역 2" }
       ]
     },
     {
       "persona": "Trend_FOMO",
       "persona_title_ko": "주인공 심리/지름 유도형 (Run Don't Walk)",
       "copies": [
-        { "en": "Viral US English Copy 1", "en_ko": "한국어 번역 1", "comment": "Natural 1-line English comment 1", "comment_ko": "댓글 번역 1" },
-        { "en": "Viral US English Copy 2", "en_ko": "한국어 번역 2", "comment": "Natural 1-line English comment 2", "comment_ko": "댓글 번역 2" }
+        { "en": "US English Copy 1", "en_ko": "한국어 번역 1", "comment": "1-line English comment 1", "comment_ko": "댓글 번역 1" },
+        { "en": "US English Copy 2", "en_ko": "한국어 번역 2", "comment": "1-line English comment 2", "comment_ko": "댓글 번역 2" }
       ]
     },
     {
       "persona": "PainPoint_Solver",
       "persona_title_ko": "고민 파괴/비포아프터형 (Problem Solver)",
       "copies": [
-        { "en": "Viral US English Copy 1", "en_ko": "한국어 번역 1", "comment": "Natural 1-line English comment 1", "comment_ko": "댓글 번역 1" },
-        { "en": "Viral US English Copy 2", "en_ko": "한국어 번역 2", "comment": "Natural 1-line English comment 2", "comment_ko": "댓글 번역 2" }
+        { "en": "US English Copy 1", "en_ko": "한국어 번역 1", "comment": "1-line English comment 1", "comment_ko": "댓글 번역 1" },
+        { "en": "US English Copy 2", "en_ko": "한국어 번역 2", "comment": "1-line English comment 2", "comment_ko": "댓글 번역 2" }
       ]
     }
   ]
@@ -176,7 +179,6 @@ Return JSON in the EXACT structure below:
       });
     }
 
-    // 503 자동 재시도 로직 적용 호출
     const result = await generateWithRetry(model, contents);
     const responseText = result.response.text();
     const jsonResult = cleanAndFixJson(responseText);
