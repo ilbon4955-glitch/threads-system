@@ -54,7 +54,7 @@ export default function Home() {
 
   const handleGenerate = async () => {
     if (!inputText && !selectedImage) {
-      alert('변?�할 ?�문 ?�용?�나 ?��?지�??�력?�주?�요.');
+      alert('변환할 원문 내용이나 이미지를 입력해주세요.');
       return;
     }
 
@@ -63,11 +63,11 @@ export default function Home() {
 
     try {
       const promptPayload = `
-모드: ${activeTab === 'A' ? '?�보 / 꿀??/ 리뷰' : '?�상 / 공감 / ?�링 / ?�머'}
-?�문 ?�용: ${inputText}
+모드: ${activeTab === 'A' ? '정보 / 꿀팁 / 리뷰' : '일상 / 공감 / 힐링 / 유머'}
+원문 내용: ${inputText}
 참고 링크: ${refLink}
 
-???�용??바탕?�로 Threads 바이???��?24�??�어 16�? ?�어 8�? �??�워?��? JSON ?�식?�로 ?�성?�줘.
+위 내용을 바탕으로 Threads 바이럴 대본 24종(일어 16종, 영어 8종) 및 키워드를 JSON 형식으로 생성해줘.
 `;
 
       const imagesPayload = selectedImage
@@ -94,7 +94,7 @@ export default function Home() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || '?�성 �??�류가 발생?�습?�다.');
+        throw new Error(data.error || '생성 중 오류가 발생했습니다.');
       }
 
       setResultData(data);
@@ -102,7 +102,7 @@ export default function Home() {
       const newItem: HistoryItem = {
         id: Date.now().toString(),
         date: new Date().toLocaleString('ko-KR'),
-        inputPrompt: inputText.substring(0, 30) || '?��?지 분석 ?��?,
+        inputPrompt: inputText.substring(0, 30) || '이미지 분석 대본',
         result: data,
       };
 
@@ -111,7 +111,7 @@ export default function Home() {
       localStorage.setItem('threads_history', JSON.stringify(updatedHistory));
     } catch (error: any) {
       console.error(error);
-      alert(error.message || '?�청 처리 �??�류가 발생?�습?�다.');
+      alert(error.message || '요청 처리 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
@@ -120,16 +120,16 @@ export default function Home() {
   const copyToClipboard = (text: string, label: string) => {
     if (!text) return;
     navigator.clipboard.writeText(text);
-    alert(`[${label}] 복사?�었?�니??`);
+    alert(`[${label}] 복사되었습니다!`);
   };
 
   return (
     <div className="flex min-h-screen bg-gray-900 text-gray-100">
       <aside className="w-64 bg-gray-950 p-4 border-r border-gray-800 flex flex-col">
-        <h2 className="text-lg font-bold mb-4 text-purple-400">?�업 ?�스?�리</h2>
+        <h2 className="text-lg font-bold mb-4 text-purple-400">작업 히스토리</h2>
         <div className="flex-1 overflow-y-auto space-y-2">
           {history.length === 0 ? (
-            <p className="text-xs text-gray-500">?�?�된 기록???�습?�다.</p>
+            <p className="text-xs text-gray-500">저장된 기록이 없습니다.</p>
           ) : (
             history.map((item) => (
               <button
@@ -149,13 +149,13 @@ export default function Home() {
         <header className="flex justify-between items-center mb-8 border-b border-gray-800 pb-4">
           <div>
             <h1 className="text-2xl font-extrabold text-white">Threads Viral Lab · JP 2030</h1>
-            <p className="text-xs text-gray-400 mt-1">글로벌 ?��?바이???��?�??�싱 ?�워???�동 ?�성�?/p>
+            <p className="text-xs text-gray-400 mt-1">글로벌 타깃 바이럴 대본 및 소싱 키워드 자동 생성기</p>
           </div>
           <div className="flex items-center space-x-2 bg-gray-800 p-2 rounded-lg border border-gray-700">
-            <span className="text-xs text-gray-300">?�� API Key:</span>
+            <span className="text-xs text-gray-300">🔑 API Key:</span>
             <input
               type="text"
-              placeholder="Gemini API Key (?�택/?�력)"
+              placeholder="Gemini API Key (선택/입력)"
               value={apiKey}
               onChange={handleApiKeyChange}
               className="bg-gray-900 text-white text-xs px-2 py-1 rounded border border-gray-700 focus:outline-none focus:border-purple-500 w-56"
@@ -170,7 +170,7 @@ export default function Home() {
               activeTab === 'A' ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
             }`}
           >
-            모드 A (?�품 / 바이??/ ?�보공유)
+            모드 A (상품 / 바이럴 / 정보공유)
           </button>
           <button
             onClick={() => setActiveTab('B')}
@@ -178,16 +178,16 @@ export default function Home() {
               activeTab === 'B' ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
             }`}
           >
-            모드 B (?�상 / 공감 / ?�링 / ?�머)
+            모드 B (일상 / 공감 / 힐링 / 유머)
           </button>
         </div>
 
         <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50 mb-8 space-y-4">
           <div>
-            <label className="block text-xs text-gray-400 mb-1 font-semibold">?�문 ?�용 ?�력</label>
+            <label className="block text-xs text-gray-400 mb-1 font-semibold">원문 내용 입력</label>
             <textarea
               rows={4}
-              placeholder="변?�할 ?�문 ?�용???�력?�세??.."
+              placeholder="변환할 원문 내용을 입력하세요..."
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-purple-500"
@@ -196,7 +196,7 @@ export default function Home() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-gray-400 mb-1">참고 링크 (?�택)</label>
+              <label className="block text-xs text-gray-400 mb-1">참고 링크 (선택)</label>
               <input
                 type="text"
                 placeholder="https://..."
@@ -206,7 +206,7 @@ export default function Home() {
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1">?�일 첨�? (?�택)</label>
+              <label className="block text-xs text-gray-400 mb-1">파일 첨부 (선택)</label>
               <input
                 type="file"
                 accept="image/*"
@@ -227,26 +227,26 @@ export default function Home() {
             disabled={loading}
             className="w-full py-3 bg-purple-600 hover:bg-purple-500 font-bold rounded-lg transition disabled:opacity-50 text-white"
           >
-            {loading ? '분석 �??��??�성 �?..' : '분석 �??��??�성 ?�작'}
+            {loading ? '분석 및 대본 생성 중...' : '분석 및 대본 생성 시작'}
           </button>
         </div>
 
         {resultData && (
           <div className="space-y-8">
-            <h2 className="text-xl font-bold text-purple-300 border-b border-gray-800 pb-2">?�� 바이???��??�성 결과</h2>
+            <h2 className="text-xl font-bold text-purple-300 border-b border-gray-800 pb-2">🎉 바이럴 대본 생성 결과</h2>
 
             {resultData.keywords && (
               <div className="bg-gray-800/80 p-4 rounded-xl border border-gray-700 space-y-2">
-                <h3 className="text-sm font-bold text-gray-300">?�� ?�싱 �?검??추천 ?�워??/h3>
+                <h3 className="text-sm font-bold text-gray-300">🔍 소싱 및 검색 추천 키워드</h3>
                 <div className="flex flex-wrap gap-2">
                   {resultData.keywords.japanese?.map((kw: string, i: number) => (
                     <span key={i} className="bg-purple-900/60 text-purple-200 text-xs px-2.5 py-1 rounded-full border border-purple-700/50">
-                      ?��?�� {kw}
+                      🇯🇵 {kw}
                     </span>
                   ))}
                   {resultData.keywords.english?.map((kw: string, i: number) => (
                     <span key={i} className="bg-blue-900/60 text-blue-200 text-xs px-2.5 py-1 rounded-full border border-blue-700/50">
-                      ?��?�� {kw}
+                      🇺🇸 {kw}
                     </span>
                   ))}
                 </div>
@@ -260,9 +260,9 @@ export default function Home() {
                     <div>
                       <div className="flex justify-between items-center mb-3">
                         <span className="text-xs font-bold px-2 py-0.5 rounded bg-purple-900 text-purple-200">
-                          #{idx + 1} {script.type || '?��?}
+                          #{idx + 1} {script.type || '대본'}
                         </span>
-                        <span className="text-xs text-gray-400">{script.lang === 'ja' ? '?��?�� ?�본?? : '?��?�� ?�어'}</span>
+                        <span className="text-xs text-gray-400">{script.lang === 'ja' ? '🇯🇵 일본어' : '🇺🇸 영어'}</span>
                       </div>
                       
                       <p className="text-sm text-gray-100 whitespace-pre-wrap leading-relaxed bg-gray-900 p-3 rounded border border-gray-800 mb-3">
@@ -271,7 +271,7 @@ export default function Home() {
 
                       {(script.first_comment || script.comment) && (
                         <div className="text-xs text-gray-300 bg-purple-950/40 p-2.5 rounded border border-purple-900/40">
-                          <span className="font-bold text-purple-400 block mb-1">?�� �??��? ?�킹:</span>
+                          <span className="font-bold text-purple-400 block mb-1">👇 첫 댓글 후킹:</span>
                           {script.first_comment || script.comment}
                         </div>
                       )}
@@ -286,10 +286,10 @@ export default function Home() {
                       </button>
                       {(script.first_comment || script.comment) && (
                         <button
-                          onClick={() => copyToClipboard(script.first_comment || script.comment, '?��?')}
+                          onClick={() => copyToClipboard(script.first_comment || script.comment, '댓글')}
                           className="flex-1 py-1.5 bg-purple-800 hover:bg-purple-700 text-xs font-medium rounded transition"
                         >
-                          ?��? 복사
+                          댓글 복사
                         </button>
                       )}
                     </div>
