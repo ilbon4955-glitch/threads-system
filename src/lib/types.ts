@@ -1,15 +1,19 @@
 export type ContentMode = "shopping" | "daily";
 
-export type CopyKind = "short" | "paragraph";
+export type JpPersona =
+  | "Information_LifeHacks"
+  | "Honest_Reviewer"
+  | "Trend_FOMO"
+  | "PainPoint_Solver";
 
-export type ViralCopy = {
-  kind: CopyKind;
+export type JpCopy = {
   ja: string;
-  ko: string;
-  verification: {
-    passed: boolean;
-    notes: string[];
-  };
+  jp_ko: string;
+};
+
+export type EnCopy = {
+  en: string;
+  en_ko: string;
 };
 
 export type AffiliateComment = {
@@ -22,7 +26,8 @@ export type GenerateResult = {
   viralTriggers: string[];
   xiaohongshuKeywords: string[];
   amazonKeywords: string[];
-  copies: ViralCopy[];
+  japanese: Record<JpPersona, JpCopy[]>;
+  english: EnCopy[];
   comments: AffiliateComment[];
 };
 
@@ -31,3 +36,18 @@ export type MediaPayload = {
   mimeType: string;
   data: string;
 };
+
+export type HistoryItem = {
+  id: string;
+  createdAt: string;
+  title: string;
+  mode: ContentMode;
+  result: GenerateResult;
+};
+
+export const JP_PERSONAS: { id: JpPersona; label: string }[] = [
+  { id: "Information_LifeHacks", label: "꿀팁/정보 공유" },
+  { id: "Honest_Reviewer", label: "내돈내산/체험" },
+  { id: "Trend_FOMO", label: "트렌드/FOMO" },
+  { id: "PainPoint_Solver", label: "문제 해결" },
+];
