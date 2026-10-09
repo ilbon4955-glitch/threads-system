@@ -1,191 +1,132 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import { NextResponse } from "next/server";
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { NextRequest, NextResponse } from 'next/server';
 
-function cleanAndFixJson(text: string) {
+export const maxDuration = 60; // Vercel Execution Timeout 설정
+
+// JSON 정제 및 자동 복구 함수
+function cleanAndFixJson(text: string): string {
   try {
-    const cleaned = text.replace(/```json\n?|\n?```/g, "").trim();
-    return JSON.parse(cleaned);
+    let cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    
+    // 시작과 끝 중괄호 위치 찾기
+    const firstBrace = cleaned.indexOf('{');
+    const lastBrace = cleaned.lastIndexOf('}');
+    
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+    }
+
+    // 제어 문자 제거
+    cleaned = cleaned.replace(/[\u0000-\u001F\u007F-\u009F]/g, (match) => {
+      if (match === '\n' || match === '\r' || match === '\t') return match;
+      return '';
+    });
+
+    return cleaned;
   } catch (e) {
-    console.error("JSON Parsing Error:", e);
-    throw new Error("AI 응답 형식이 올바르지 않습니다.");
+    return text;
   }
 }
 
-// 429 Rate Limit 및 503 Overload 지연 재시도 함수
-async function generateWithRetry(model: any, contents: any[], retries = 4, delay = 3000): Promise<any> {
-  for (let i = 0; i < retries; i++) {
-    try {
-      return await model.generateContent(contents);
-    } catch (error: any) {
-      const isQuotaError = error.message?.includes("429") || error.status === 429 || error.message?.includes("Quota");
-      const isOverload = error.message?.includes("503") || error.status === 503;
+// 503 과부하 대응 및 모델 자동 Fallback 함수
+async function generateContentWithRetry(apiKey: string, contents: any[]) {
+  // 우선순위 모델 순서 (3.6-flash -> 2.5-flash -> 2.0-flash)
+  const modelsToTry = ['gemini-3.6-flash', 'gemini-2.5-flash', 'gemini-2.0-flash'];
+  const genAI = new GoogleGenerativeAI(apiKey);
 
-      if ((isQuotaError || isOverload) && i < retries - 1) {
-        console.warn(`[Gemini RateLimit/Overload] Waiting ${delay}ms before retry... (Attempt ${i + 1}/${retries})`);
-        await new Promise((resolve) => setTimeout(resolve, delay));
-        delay += 2000; // 429 대비를 위해 지연 시간을 2초씩 넉넉히 증가
-      } else {
-        throw error;
+  let lastError: any = null;
+
+  for (const modelName of modelsToTry) {
+    let retries = 2; // 모델당 2회 재시도
+    while (retries > 0) {
+      try {
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          generationConfig: {
+            maxOutputTokens: 8192,
+            temperature: 0.7,
+          },
+        });
+
+        const result = await model.generateContent(contents);
+        const responseText = result.response.text();
+        
+        if (responseText && responseText.trim().length > 0) {
+          return responseText;
+        }
+      } catch (error: any) {
+        lastError = error;
+        const errorMsg = error?.message || '';
+        const is503 = error?.status === 503 || errorMsg.includes('503') || errorMsg.includes('high demand');
+
+        if (is503) {
+          retries--;
+          if (retries > 0) {
+            // 503 발생 시 1.2초 대기 후 재시도
+            await new Promise((resolve) => setTimeout(resolve, 1200));
+            continue;
+          }
+        }
+        // 503이 아니거나 재시도 횟수를 다 쓰면 다음 fallback 모델로 전환
+        break;
       }
     }
   }
+
+  throw lastError || new Error('구글 제미나이 서버가 과부하 상태입니다. 잠시 후 다시 시도해 주세요.');
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const { imageBase64, mimeType, sourceUrl, rawText, mode, userApiKey } = await req.json();
+    const body = await req.json();
+    const { prompt, images, apiKey: userApiKey } = body;
 
-    const activeApiKey = userApiKey?.trim() || process.env.GEMINI_API_KEY || "";
-
-    if (!activeApiKey) {
+    // API Key 검증 (클라이언트 전달 키 우선, 없으면 환경변수 사용)
+    const apiKey = userApiKey || process.env.GEMINI_API_KEY;
+    if (!apiKey) {
       return NextResponse.json(
-        { error: "Gemini API 키가 입력되지 않았습니다. 상단 입력창에 API 키를 입력해 주세요." },
+        { error: 'Gemini API Key가 필요합니다. 상단 입력창에 API Key를 입력해주세요.' },
         { status: 400 }
       );
     }
 
-    const genAI = new GoogleGenerativeAI(activeApiKey);
-    const model = genAI.getGenerativeModel({
-      model: "gemini-3.6-flash",
-      generationConfig: { 
-        responseMimeType: "application/json",
-        temperature: 0.7 
-      }
-    });
-
-    const buildContents = (systemPrompt: string) => {
-      const list: any[] = [systemPrompt];
-      if (rawText) list.push(`Raw Text Context: ${rawText}`);
-      if (sourceUrl) list.push(`Source URL: ${sourceUrl}`);
-      if (mode) list.push(`Mode: ${mode}`);
-      if (imageBase64) {
-        list.push({
-          inlineData: {
-            data: imageBase64.replace(/^data:image\/\w+;base64,/, ""),
-            mimeType: mimeType || "image/jpeg"
-          }
-        });
-      }
-      return list;
-    };
-
-    // 429 분당 제한을 회피하기 위해 단일 통합 경량 프롬프트 사용
-    const unifiedPrompt = `
-You are a top-tier Global Threads Viral Marketing Specialist.
-Analyze the provided content and generate a viral marketing package for Japanese and US Threads.
-
-CRITICAL INSTRUCTIONS:
-1. 'original_translation_ko': Accurate Korean translation of original text/images.
-2. 'summary_ko': Concise 2-line Korean explanation on WHY this post went viral.
-3. 'viral_factors': 3 core viral hashtags in Korean.
-4. JAPANESE COPIES (16 total, 4 personas x 4 copies):
-   - Personas: Information_LifeHacks (꿀팁/정보 공유형), Honest_Reviewer (내돈내산/체험형), Trend_FOMO (트렌드/지름 유도형), PainPoint_Solver (문제 해결/비포아프터형)
-   - Must use 100% native spoken casual Japanese on Threads/X (〜マジで良き, 〜説, 〜すぎた, 保存必須).
-   - EVERY copy MUST have its OWN 1-line native Japanese comment ('comment') and its Korean translation ('comment_ko').
-5. ENGLISH COPIES (8 total, 4 personas x 2 copies):
-   - Personas: HolyGrail_GameChanger (최애템/삶의질), Honest_HypeCheck (솔직검증/내돈내산), Trend_FOMO (주인공심리/FOMO), PainPoint_Solver (고민파괴)
-   - Must use natural US Threads/TikTok slang & hooks (obsessed, game changer, run don't walk).
-   - EVERY copy MUST have its OWN 1-line native English comment ('comment') and its Korean translation ('comment_ko').
-
-Return JSON matching EXACTLY this structure:
-{
-  "product_analysis": {
-    "original_translation_ko": "원문 완벽 번역",
-    "summary_ko": "바이럴 원인 요약 (2줄)",
-    "viral_factors": ["포인트1", "포인트2", "포인트3"]
-  },
-  "search_keywords": {
-    "xiaohongshu": "Xiaohongshu search keyword",
-    "amazon_jp": "Amazon JP search keyword",
-    "amazon_us": "Amazon US search keyword"
-  },
-  "japanese_copies": [
-    {
-      "persona": "Information_LifeHacks",
-      "persona_title_ko": "꿀팁/정보 공유형 (높은 저장률)",
-      "copies": [
-        { "jp": "JP copy 1", "jp_ko": "번역 1", "comment": "Comment 1", "comment_ko": "댓글 번역 1" },
-        { "jp": "JP copy 2", "jp_ko": "번역 2", "comment": "Comment 2", "comment_ko": "댓글 번역 2" },
-        { "jp": "JP copy 3", "jp_ko": "번역 3", "comment": "Comment 3", "comment_ko": "댓글 번역 3" },
-        { "jp": "JP copy 4", "jp_ko": "번역 4", "comment": "Comment 4", "comment_ko": "댓글 번역 4" }
-      ]
-    },
-    {
-      "persona": "Honest_Reviewer",
-      "persona_title_ko": "내돈내산/체험형 (높은 신뢰도)",
-      "copies": [
-        { "jp": "JP copy 1", "jp_ko": "번역 1", "comment": "Comment 1", "comment_ko": "댓글 번역 1" },
-        { "jp": "JP copy 2", "jp_ko": "번역 2", "comment": "Comment 2", "comment_ko": "댓글 번역 2" },
-        { "jp": "JP copy 3", "jp_ko": "번역 3", "comment": "Comment 3", "comment_ko": "댓글 번역 3" },
-        { "jp": "JP copy 4", "jp_ko": "번역 4", "comment": "Comment 4", "comment_ko": "댓글 번역 4" }
-      ]
-    },
-    {
-      "persona": "Trend_FOMO",
-      "persona_title_ko": "트렌드/지름 유도형 (품절대란/참여)",
-      "copies": [
-        { "jp": "JP copy 1", "jp_ko": "번역 1", "comment": "Comment 1", "comment_ko": "댓글 번역 1" },
-        { "jp": "JP copy 2", "jp_ko": "번역 2", "comment": "Comment 2", "comment_ko": "댓글 번역 2" },
-        { "jp": "JP copy 3", "jp_ko": "번역 3", "comment": "Comment 3", "comment_ko": "댓글 번역 3" },
-        { "jp": "JP copy 4", "jp_ko": "번역 4", "comment": "Comment 4", "comment_ko": "댓글 번역 4" }
-      ]
-    },
-    {
-      "persona": "PainPoint_Solver",
-      "persona_title_ko": "문제 해결/비포아프터형 (고민 해결)",
-      "copies": [
-        { "jp": "JP copy 1", "jp_ko": "번역 1", "comment": "Comment 1", "comment_ko": "댓글 번역 1" },
-        { "jp": "JP copy 2", "jp_ko": "번역 2", "comment": "Comment 2", "comment_ko": "댓글 번역 2" },
-        { "jp": "JP copy 3", "jp_ko": "번역 3", "comment": "Comment 3", "comment_ko": "댓글 번역 3" },
-        { "jp": "JP copy 4", "jp_ko": "번역 4", "comment": "Comment 4", "comment_ko": "댓글 번역 4" }
-      ]
+    // 프롬프트 및 이미지 파싱
+    const contents: any[] = [];
+    if (prompt) {
+      contents.push(prompt);
     }
-  ],
-  "english_copies": [
-    {
-      "persona": "HolyGrail_GameChanger",
-      "persona_title_ko": "최애템/삶의 질 상승형 (Holy Grail)",
-      "copies": [
-        { "en": "EN copy 1", "en_ko": "번역 1", "comment": "Comment 1", "comment_ko": "댓글 번역 1" },
-        { "en": "EN copy 2", "en_ko": "번역 2", "comment": "Comment 2", "comment_ko": "댓글 번역 2" }
-      ]
-    },
-    {
-      "persona": "Honest_HypeCheck",
-      "persona_title_ko": "솔직검증/내돈내산형 (Honest Review)",
-      "copies": [
-        { "en": "EN copy 1", "en_ko": "번역 1", "comment": "Comment 1", "comment_ko": "댓글 번역 1" },
-        { "en": "EN copy 2", "en_ko": "번역 2", "comment": "Comment 2", "comment_ko": "댓글 번역 2" }
-      ]
-    },
-    {
-      "persona": "Trend_FOMO",
-      "persona_title_ko": "주인공 심리/지름 유도형 (Run Don't Walk)",
-      "copies": [
-        { "en": "EN copy 1", "en_ko": "번역 1", "comment": "Comment 1", "comment_ko": "댓글 번역 1" },
-        { "en": "EN copy 2", "en_ko": "번역 2", "comment": "Comment 2", "comment_ko": "댓글 번역 2" }
-      ]
-    },
-    {
-      "persona": "PainPoint_Solver",
-      "persona_title_ko": "고민 파괴/비포아프터형 (Problem Solver)",
-      "copies": [
-        { "en": "EN copy 1", "en_ko": "번역 1", "comment": "Comment 1", "comment_ko": "댓글 번역 1" },
-        { "en": "EN copy 2", "en_ko": "번역 2", "comment": "Comment 2", "comment_ko": "댓글 번역 2" }
-      ]
+
+    if (images && Array.isArray(images)) {
+      for (const img of images) {
+        if (img.inlineData) {
+          contents.push({
+            inlineData: {
+              data: img.inlineData.data,
+              mimeType: img.inlineData.mimeType,
+            },
+          });
+        }
+      }
     }
-  ]
-}
-`;
 
-    const result = await generateWithRetry(model, buildContents(unifiedPrompt));
-    const finalResult = cleanAndFixJson(result.response.text());
+    // 과부하 방지 및 재시도 로직을 탑재한 제미나이 호출
+    const rawResponse = await generateContentWithRetry(apiKey, contents);
+    
+    // JSON 정제
+    const cleanedJsonString = cleanAndFixJson(rawResponse);
+    const parsedData = JSON.parse(cleanedJsonString);
 
-    return NextResponse.json(finalResult);
+    return NextResponse.json(parsedData);
   } catch (error: any) {
-    console.error("Generation Error:", error);
+    console.error('Generate API Error:', error);
+    
+    let errorMessage = error?.message || '대본 생성 중 오류가 발생했습니다.';
+    if (errorMessage.includes('JSON')) {
+      errorMessage = '결과 데이터를 분석하는 중 형식이 다소 흐트러졌습니다. 다시 한 번 [생성] 버튼을 눌러주세요.';
+    }
+
     return NextResponse.json(
-      { error: error.message || "카피 생성 중 오류가 발생했습니다." },
+      { error: errorMessage },
       { status: 500 }
     );
   }
