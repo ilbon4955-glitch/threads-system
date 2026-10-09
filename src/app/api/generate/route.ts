@@ -25,7 +25,6 @@ function cleanAndFixJson(text: string): string {
 }
 
 async function generateContentWithRetry(apiKey: string, contents: any[]) {
-  // 지원 중단된 모델 제외, 현재 구글 최신 표준 모델 사용
   const modelsToTry = ['gemini-2.5-flash'];
   const genAI = new GoogleGenerativeAI(apiKey);
 
