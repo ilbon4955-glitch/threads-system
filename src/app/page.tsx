@@ -1,429 +1,257 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
+
+interface HistoryItem {
+  id: string;
+  date: string;
+  inputPrompt: string;
+  result: any;
+}
 
 export default function Home() {
-  const [userApiKey, setUserApiKey] = useState("");
-  const [mode, setMode] = useState("mode_a");
-  const [rawText, setRawText] = useState("");
-  const [sourceUrl, setSourceUrl] = useState("");
-  const [image, setImage] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-
+  const [apiKey, setApiKey] = useState('');
+  const [activeTab, setActiveTab] = useState<'A' | 'B'>('A');
+  const [inputText, setInputText] = useState('');
+  const [refLink, setRefLink] = useState('');
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [imageMimeType, setImageMimeType] = useState<string>('');
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
-  const [history, setHistory] = useState<any[]>([]);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"jp" | "en">("jp");
+  const [resultData, setResultData] = useState<any>(null);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
 
+  // LocalStorage API 키 및 히스토리 로드
   useEffect(() => {
-    const savedKey = localStorage.getItem("gemini_user_api_key");
-    if (savedKey) setUserApiKey(savedKey);
+    const savedKey = localStorage.getItem('threads_gemini_api_key');
+    if (savedKey) setApiKey(savedKey);
+
+    const savedHistory = localStorage.getItem('threads_history');
+    if (savedHistory) {
+      try {
+        setHistory(JSON.parse(savedHistory));
+      } catch (e) {
+        console.error('Failed to parse history', e);
+      }
+    }
   }, []);
 
+  // API Key 변경 시 저장
   const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setUserApiKey(value);
-    localStorage.setItem("gemini_user_api_key", value);
+    const key = e.target.value;
+    setApiKey(key);
+    localStorage.setItem('threads_gemini_api_key', key);
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // 이미지 업로드 핸들러
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setImage(file);
       const reader = new FileReader();
-      reader.onloadend = () => setPreview(reader.result as string);
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setSelectedImage(base64String);
+        setImageMimeType(file.type);
+      };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleCopy = (e: React.MouseEvent, text: string, id: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!preview && !rawText && !sourceUrl) {
-      return alert("원문, 링크, 또는 이미지 중 하나 이상을 입력해주세요.");
+  // 대본 생성 요청
+  const handleGenerate = async () => {
+    if (!inputText && !selectedImage) {
+      alert('변환할 원문 내용이나 이미지를 입력해주세요.');
+      return;
     }
 
     setLoading(true);
-    setResult(null);
+    setResultData(null);
 
     try {
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const promptPayload = `
+모드: ${activeTab === 'A' ? '정보 / 꿀팁 / 리뷰' : '일상 / 공감 / 힐링 / 유머'}
+원문 내용: ${inputText}
+참고 링크: ${refLink}
+
+위 내용을 바탕으로 Threads 바이럴 대본 24종(일어 16종, 영어 8종) 및 키워드를 JSON 형식으로 생성해줘.
+`;
+
+      const imagesPayload = selectedImage
+        ? [
+            {
+              inlineData: {
+                data: selectedImage.split(',')[1],
+                mimeType: imageMimeType || 'image/png',
+              },
+            },
+          ]
+        : [];
+
+      // 안전한 백엔드 API 호출 (/api/generate)
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
-          userApiKey,
-          imageBase64: preview || "",
-          mimeType: image?.type || "image/jpeg",
-          rawText,
-          sourceUrl,
-          mode
-        })
+          prompt: promptPayload,
+          images: imagesPayload,
+          apiKey: apiKey,
+        }),
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "생성 실패");
 
-      setResult(data);
-      setHistory((prev) => [
-        {
-          id: Date.now(),
-          title: data.product_analysis?.summary_ko?.slice(0, 20) || "생성 결과",
-          data
-        },
-        ...prev
-      ]);
-    } catch (err: any) {
-      alert(err.message || "오류가 발생했습니다.");
+      if (!res.ok) {
+        throw new Error(data.error || '생성 중 오류가 발생했습니다.');
+      }
+
+      setResultData(data);
+
+      // 히스토리 저장
+      const newItem: HistoryItem = {
+        id: Date.now().toString(),
+        date: new Date().toLocaleString('ko-KR'),
+        inputPrompt: inputText.substring(0, 30) || '이미지 분석',
+        result: data,
+      };
+
+      const updatedHistory = [newItem, ...history.slice(0, 19)];
+      setHistory(updatedHistory);
+      localStorage.setItem('threads_history', JSON.stringify(updatedHistory));
+    } catch (error: any) {
+      console.error(error);
+      alert(error.message || '요청 처리 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
   };
 
+  // 텍스트 복사 헬퍼
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    alert(`${label} 복사되었습니다!`);
+  };
+
   return (
-    <div className="flex h-screen bg-gray-100 font-sans">
-      {/* 1. 좌측 히스토리 패널 */}
-      <aside className="w-64 bg-gray-900 text-white p-4 flex flex-col border-r border-gray-800">
-        <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-          📜 작업 히스토리
-        </h2>
+    <div className="flex min-h-screen bg-gray-900 text-gray-100">
+      {/* 좌측 히스토리 사이드바 */}
+      <aside className="w-64 bg-gray-950 p-4 border-r border-gray-800 flex flex-col">
+        <h2 className="text-lg font-bold mb-4 text-purple-400">작업 히스토리</h2>
         <div className="flex-1 overflow-y-auto space-y-2">
           {history.length === 0 ? (
-            <p className="text-xs text-gray-500">생성된 기록이 없습니다.</p>
+            <p className="text-xs text-gray-500">저장된 기록이 없습니다.</p>
           ) : (
             history.map((item) => (
               <button
                 key={item.id}
-                onClick={() => setResult(item.data)}
-                className="w-full text-left p-2.5 rounded bg-gray-800 hover:bg-gray-700 text-xs text-gray-200 truncate"
+                onClick={() => setResultData(item.result)}
+                className="w-full text-left p-2 rounded bg-gray-800 hover:bg-gray-700 text-xs text-gray-300 truncate transition"
               >
-                {item.title}...
+                <div className="font-semibold text-gray-200">{item.inputPrompt}</div>
+                <div className="text-[10px] text-gray-500">{item.date}</div>
               </button>
             ))
           )}
         </div>
       </aside>
 
-      {/* 2. 중앙 메인 컨텐츠 영역 */}
-      <main className="flex-1 overflow-y-auto p-8 space-y-6">
-        <div className="max-w-4xl mx-auto space-y-6">
-          {/* 상단 헤더 & 우측 컴팩트 API 키 설정 */}
-          <header className="flex justify-between items-start border-b pb-4">
+      {/* 메인 콘텐츠 영역 */}
+      <main className="flex-1 p-8 max-w-5xl mx-auto">
+        <header className="flex justify-between items-center mb-8 border-b border-gray-800 pb-4">
+          <div>
+            <h1 className="text-2xl font-extrabold text-white">Threads Viral Lab · JP 2030</h1>
+            <p className="text-xs text-gray-400 mt-1">글로벌 타깃 바이럴 대본 및 소싱 키워드 자동 생성기</p>
+          </div>
+          <div className="flex items-center space-x-2 bg-gray-800 p-2 rounded-lg border border-gray-700">
+            <span className="text-xs text-gray-300">🔑 API Key:</span>
+            <input
+              type="password"
+              placeholder="Gemini API Key 입력"
+              value={apiKey}
+              onChange={handleApiKeyChange}
+              className="bg-gray-900 text-white text-xs px-2 py-1 rounded border border-gray-700 focus:outline-none focus:border-purple-500 w-48"
+            />
+          </div>
+        </header>
+
+        {/* 모드 선택 탭 */}
+        <div className="flex space-x-2 mb-6">
+          <button
+            onClick={() => setActiveTab('A')}
+            className={`px-4 py-2 text-sm rounded-lg font-medium transition ${
+              activeTab === 'A' ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+            }`}
+          >
+            모드 A (정보 / 꿀팁 / 리뷰)
+          </button>
+          <button
+            onClick={() => setActiveTab('B')}
+            className={`px-4 py-2 text-sm rounded-lg font-medium transition ${
+              activeTab === 'B' ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+            }`}
+          >
+            모드 B (일상 / 공감 / 힐링 / 유머)
+          </button>
+        </div>
+
+        {/* 입력 폼 */}
+        <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50 mb-8 space-y-4">
+          <div>
+            <textarea
+              rows={4}
+              placeholder="변환할 원문 내용을 입력하세요..."
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-purple-500"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                글로벌 바이럴 생성기 (Threads Viral Lab)
-              </h1>
-              <p className="text-xs text-gray-500 mt-1">
-                원문, 링크, 이미지 분석 기반 일본어/영어 바이럴 요소 분석 및 대본 생성
-              </p>
-            </div>
-            
-            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border shadow-sm">
-              <span className="text-xs font-semibold text-gray-600">🔑 API Key:</span>
+              <label className="block text-xs text-gray-400 mb-1">참고 링크 (선택)</label>
               <input
-                type="password"
-                value={userApiKey}
-                onChange={handleApiKeyChange}
-                placeholder="Gemini API Key 입력"
-                className="w-40 text-xs p-1 border rounded bg-gray-50 focus:bg-white focus:outline-none"
+                type="text"
+                placeholder="https://..."
+                value={refLink}
+                onChange={(e) => setRefLink(e.target.value)}
+                className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-sm text-white focus:outline-none focus:border-purple-500"
               />
             </div>
-          </header>
-
-          {/* 입력 폼 */}
-          <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl border shadow-sm space-y-4">
-            {/* 모드 선택 */}
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setMode("mode_a")}
-                className={`py-2 px-4 text-xs font-semibold rounded-lg border ${
-                  mode === "mode_a"
-                    ? "bg-black text-white border-black"
-                    : "bg-white text-gray-600 border-gray-300"
-                }`}
-              >
-                모드 A (상품 / 바이럴 / 정보공유)
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode("mode_b")}
-                className={`py-2 px-4 text-xs font-semibold rounded-lg border ${
-                  mode === "mode_b"
-                    ? "bg-black text-white border-black"
-                    : "bg-white text-gray-600 border-gray-300"
-                }`}
-              >
-                모드 B (일상 / 공감 / 힐링 / 유머)
-              </button>
-            </div>
-
-            {/* 원문 입력 */}
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">원문 내용 입력</label>
-              <textarea
-                value={rawText}
-                onChange={(e) => setRawText(e.target.value)}
-                placeholder="변환할 원문 내용을 입력하세요..."
-                className="w-full h-20 p-3 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-black"
+              <label className="block text-xs text-gray-400 mb-1">파일 첨부 (선택)</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="w-full bg-gray-900 border border-gray-700 rounded-lg p-1.5 text-xs text-gray-300 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-purple-600 file:text-white"
               />
             </div>
+          </div>
 
-            {/* 링크 및 파일 첨부 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">참고 링크 (선택)</label>
-                <input
-                  type="url"
-                  value={sourceUrl}
-                  onChange={(e) => setSourceUrl(e.target.value)}
-                  placeholder="https://..."
-                  className="w-full p-2.5 text-xs border rounded-lg"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">파일 첨부 (선택)</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="w-full text-xs"
-                />
-              </div>
-            </div>
-
-            {preview && (
-              <div className="w-24 h-24 relative rounded border overflow-hidden">
-                <img src={preview} alt="Preview" className="object-cover w-full h-full" />
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-lg disabled:bg-gray-300"
-            >
-              {loading ? "분석 및 대본 생성 중..." : "분석 및 대본 생성 시작"}
-            </button>
-          </form>
-
-          {/* 결과 영역 */}
-          {result && (
-            <div className="space-y-6">
-              {/* 원문 한국어 번역 & 왜 바이럴되었는지 심층 분석 */}
-              <section className="bg-indigo-50 p-5 rounded-xl border border-indigo-100 space-y-3">
-                <h2 className="font-bold text-sm text-indigo-950 flex items-center gap-1.5">
-                  🔥 왜 이 글이 바이럴 되었는가? (심층 분석)
-                </h2>
-
-                {result.product_analysis?.original_translation_ko && (
-                  <div className="bg-white p-3 rounded border text-xs text-gray-700 shadow-sm">
-                    <span className="font-bold text-indigo-600 block mb-1">[원문/이미지 완벽 한국어 번역]</span>
-                    {result.product_analysis.original_translation_ko}
-                  </div>
-                )}
-
-                <div className="bg-white p-3.5 rounded-lg border border-indigo-100 space-y-2">
-                  <span className="font-bold text-xs text-indigo-900 block">💡 바이럴 원인 및 심리적 포인트 요약</span>
-                  <p className="text-xs text-gray-800 leading-relaxed whitespace-pre-wrap">
-                    {result.product_analysis?.summary_ko}
-                  </p>
-                </div>
-
-                <div className="flex gap-2 flex-wrap pt-1">
-                  {result.product_analysis?.viral_factors?.map((v: string, idx: number) => (
-                    <span key={idx} className="bg-indigo-200 text-indigo-900 font-semibold text-[11px] px-3 py-1 rounded-full">
-                      #{v}
-                    </span>
-                  ))}
-                </div>
-              </section>
-
-              {/* 검색 키워드 */}
-              <section className="bg-gray-50 p-4 rounded-xl border space-y-2">
-                <h2 className="font-bold text-xs text-gray-800">🏷️ 소싱 검색 키워드</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                  {Object.entries(result.search_keywords || {}).map(([key, val]: [string, any]) => (
-                    <div key={key} className="flex items-center justify-between bg-white p-2 rounded border text-xs">
-                      <span className="font-bold uppercase text-gray-400">{key}:</span>
-                      <span className="truncate mx-1 text-gray-800 font-medium">{val}</span>
-                      <button
-                        type="button"
-                        onClick={(e) => handleCopy(e, val, key)}
-                        className="text-[10px] bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded"
-                      >
-                        {copiedId === key ? "복사됨" : "복사"}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </section>
-
-              {/* 언어 선택 탭 */}
-              <div className="flex border-b border-gray-200 space-x-4">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("jp")}
-                  className={`pb-2 text-sm font-bold border-b-2 ${
-                    activeTab === "jp"
-                      ? "border-indigo-600 text-indigo-600"
-                      : "border-transparent text-gray-400"
-                  }`}
-                >
-                  🇯🇵 일본어 Threads (16종 - 4개 페르소나)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("en")}
-                  className={`pb-2 text-sm font-bold border-b-2 ${
-                    activeTab === "en"
-                      ? "border-indigo-600 text-indigo-600"
-                      : "border-transparent text-gray-400"
-                  }`}
-                >
-                  🇺🇸 영어 Threads (8종 - 4개 페르소나)
-                </button>
-              </div>
-
-              {/* 🇯🇵 일본어 16종 (4개 페르소나 x 4개) */}
-              {activeTab === "jp" && (
-                <div className="space-y-6">
-                  {result.japanese_copies?.map((group: any, gIdx: number) => (
-                    <div key={gIdx} className="bg-white p-5 rounded-xl border space-y-4">
-                      <h3 className="font-bold text-sm text-indigo-600 border-b pb-2">
-                        {group.persona_title_ko || group.persona}
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {group.copies?.map((item: any, cIdx: number) => {
-                          const mainId = `jp-main-${gIdx}-${cIdx}`;
-                          const commentId = `jp-comment-${gIdx}-${cIdx}`;
-                          const allId = `jp-all-${gIdx}-${cIdx}`;
-                          const fullText = `${item.jp}\n\n[첫 댓글]\n${item.comment}`;
-
-                          return (
-                            <div key={cIdx} className="bg-gray-50 p-4 rounded-xl border flex flex-col justify-between space-y-3 shadow-sm">
-                              <div className="space-y-1">
-                                <div className="flex justify-between items-center">
-                                  <span className="text-[10px] text-gray-400">본문 해석: {item.jp_ko}</span>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => handleCopy(e, item.jp, mainId)}
-                                    className="text-[10px] text-indigo-600 hover:underline font-bold"
-                                  >
-                                    {copiedId === mainId ? "복사됨!" : "본문만 복사"}
-                                  </button>
-                                </div>
-                                <p className="whitespace-pre-wrap text-xs text-gray-800 font-medium leading-relaxed bg-white p-2.5 rounded border">
-                                  {item.jp}
-                                </p>
-                              </div>
-
-                              <div className="space-y-1 pt-1 border-t border-gray-200">
-                                <div className="flex justify-between items-center">
-                                  <span className="text-[10px] text-gray-400">💬 첫 댓글 (후킹): {item.comment_ko}</span>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => handleCopy(e, item.comment, commentId)}
-                                    className="text-[10px] text-gray-500 hover:underline"
-                                  >
-                                    {copiedId === commentId ? "복사됨!" : "댓글만 복사"}
-                                  </button>
-                                </div>
-                                <p className="text-xs text-gray-700 bg-gray-100 p-2 rounded">
-                                  {item.comment}
-                                </p>
-                              </div>
-
-                              <button
-                                type="button"
-                                onClick={(e) => handleCopy(e, fullText, allId)}
-                                className="w-full py-2 text-xs bg-black text-white font-bold rounded hover:bg-gray-800 transition"
-                              >
-                                {copiedId === allId ? "복사 완료!" : "전체 복사 (본문 + 댓글)"}
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* 🇺🇸 영어 8종 (4개 페르소나 x 2개) */}
-              {activeTab === "en" && (
-                <div className="space-y-6">
-                  {result.english_copies?.map((group: any, gIdx: number) => (
-                    <div key={gIdx} className="bg-white p-5 rounded-xl border space-y-4">
-                      <h3 className="font-bold text-sm text-indigo-600 border-b pb-2">
-                        {group.persona_title_ko || group.persona}
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {group.copies?.map((item: any, cIdx: number) => {
-                          const mainId = `en-main-${gIdx}-${cIdx}`;
-                          const commentId = `en-comment-${gIdx}-${cIdx}`;
-                          const allId = `en-all-${gIdx}-${cIdx}`;
-                          const fullText = `${item.en}\n\n[Comment]\n${item.comment}`;
-
-                          return (
-                            <div key={cIdx} className="bg-gray-50 p-4 rounded-xl border flex flex-col justify-between space-y-3 shadow-sm">
-                              <div className="space-y-1">
-                                <div className="flex justify-between items-center">
-                                  <span className="text-[10px] text-gray-400">본문 해석: {item.en_ko}</span>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => handleCopy(e, item.en, mainId)}
-                                    className="text-[10px] text-indigo-600 hover:underline font-bold"
-                                  >
-                                    {copiedId === mainId ? "복사됨!" : "본문만 복사"}
-                                  </button>
-                                </div>
-                                <p className="whitespace-pre-wrap text-xs text-gray-800 font-medium leading-relaxed bg-white p-2.5 rounded border">
-                                  {item.en}
-                                </p>
-                              </div>
-
-                              <div className="space-y-1 pt-1 border-t border-gray-200">
-                                <div className="flex justify-between items-center">
-                                  <span className="text-[10px] text-gray-400">💬 첫 댓글: {item.comment_ko}</span>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => handleCopy(e, item.comment, commentId)}
-                                    className="text-[10px] text-gray-500 hover:underline"
-                                  >
-                                    {copiedId === commentId ? "복사됨!" : "댓글만 복사"}
-                                  </button>
-                                </div>
-                                <p className="text-xs text-gray-700 bg-gray-100 p-2 rounded">
-                                  {item.comment}
-                                </p>
-                              </div>
-
-                              <button
-                                type="button"
-                                onClick={(e) => handleCopy(e, fullText, allId)}
-                                className="w-full py-2 text-xs bg-black text-white font-bold rounded hover:bg-gray-800 transition"
-                              >
-                                {copiedId === allId ? "복사 완료!" : "전체 복사 (본문 + 댓글)"}
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+          {selectedImage && (
+            <div className="mt-2">
+              <img src={selectedImage} alt="미리보기" className="w-32 h-32 object-cover rounded border border-gray-700" />
             </div>
           )}
+
+          <button
+            onClick={handleGenerate}
+            disabled={loading}
+            className="w-full py-3 bg-purple-600 hover:bg-purple-500 font-bold rounded-lg transition disabled:opacity-50 text-white"
+          >
+            {loading ? '분석 및 대본 생성 중...' : '분석 및 대본 생성 시작'}
+          </button>
         </div>
+
+        {/* 결과 출력 영역 */}
+        {resultData && (
+          <div className="bg-gray-800/80 p-6 rounded-xl border border-gray-700 space-y-6">
+            <h2 className="text-xl font-bold text-purple-300">🎉 대본 생성 결과</h2>
+            <div className="p-4 bg-gray-900 rounded border border-gray-800 text-sm whitespace-pre-wrap">
+              {typeof resultData === 'string' ? resultData : JSON.stringify(resultData, null, 2)}
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
