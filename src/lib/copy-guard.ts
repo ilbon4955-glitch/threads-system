@@ -1,10 +1,10 @@
 const SUBJECT_PATTERNS = [
-  /私[はがもをの]/,
-  /わたし[はがもをの]/,
-  /あたし[はがもをの]/,
-  /あなた[はがもをの]/,
-  /貴方[はがもをの]/,
-  /お前[はがもをの]/,
+  /�???��?�を??/,
+  /?�た????��?�を??/,
+  /?�た????��?�を??/,
+  /?�な????��?�を??/,
+  /貴方[??��?�を??/,
+  /?�前[??��?�を??/,
 ];
 
 export function stripHashtags(text: string): string {
@@ -21,9 +21,9 @@ export function stripSubjects(text: string): string {
 
 export function inspectCopy(text: string): string[] {
   const notes: string[] = [];
-  if (/#[^\s#]+/.test(text)) notes.push("해시태그 포함");
+  if (/#[^\s#]+/.test(text)) notes.push("?�시?�그 ?�함");
   if (SUBJECT_PATTERNS.some((pattern) => pattern.test(text))) {
-    notes.push("주어(私/あなた) 사용");
+    notes.push("주어(�??�な?? ?�용");
   }
   return notes;
 }
@@ -34,14 +34,14 @@ export function sanitizeCopy(text: string): string {
 
 export function buildCommentBlock(hook: string, amazonLink: string): string {
   const line = amazonLink.trim() || "https://amzn.to/your-link";
-  const hookLine = /👇|✨/.test(hook) ? hook.trim() : `${hook.trim()}👇✨`;
+  const hookLine = /?��|??.test(hook) ? hook.trim() : `${hook.trim()}?��??;
   return [
     hookLine,
     "",
     line,
     line,
     "",
-    "※Amazonアソシエイトプログラムに参加しています",
+    "?�Amazon?�ソ?�エ?�ト?�ロ?�ラ?�に?�加?�て?�ま??,
   ].join("\n");
 }
 
@@ -52,7 +52,7 @@ export function extractJsonObject(raw: string): unknown {
   const start = candidate.indexOf("{");
   const end = candidate.lastIndexOf("}");
   if (start === -1 || end === -1 || end <= start) {
-    throw new Error("모델 응답에서 JSON을 찾지 못했습니다.");
+    throw new Error("모델 ?�답?�서 JSON??찾�? 못했?�니??");
   }
   return JSON.parse(candidate.slice(start, end + 1));
 }

@@ -36,7 +36,7 @@ function CopyButton({ value, label }: { value: string; label: string }) {
       className="inline-flex items-center gap-1.5 rounded-lg bg-foreground px-3 py-1.5 text-xs font-medium text-background"
     >
       {copied ? <Check className="h-3.5 w-3.5" /> : <Clipboard className="h-3.5 w-3.5" />}
-      {copied ? "복사됨" : label}
+      {copied ? "복사?? : label}
     </button>
   );
 }
@@ -62,7 +62,7 @@ function Chip({ text }: { text: string }) {
 function fileToBase64(file: File): Promise<{ name: string; mimeType: string; data: string }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onerror = () => reject(new Error("파일을 읽지 못했습니다."));
+    reader.onerror = () => reject(new Error("?�일???��? 못했?�니??"));
     reader.onload = () => {
       const result = String(reader.result ?? "");
       resolve({
@@ -141,13 +141,13 @@ export default function Home() {
         }),
       });
       const data = (await response.json()) as GenerateResult & { error?: string };
-      if (!response.ok) throw new Error(data.error || "생성에 실패했습니다.");
+      if (!response.ok) throw new Error(data.error || "?�성???�패?�습?�다.");
       setResult(data);
       const title =
         sourceText.trim().slice(0, 24) ||
         sourceUrl.replace(/^https?:\/\//, "").slice(0, 24) ||
         data.amazonKeywords[0] ||
-        "새 생성 기록";
+        "???�성 기록";
       persistHistory([
         {
           id: `${Date.now()}`,
@@ -159,7 +159,7 @@ export default function Home() {
         ...history.slice(0, 29),
       ]);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "생성에 실패했습니다.");
+      setError(caught instanceof Error ? caught.message : "?�성???�패?�습?�다.");
     } finally {
       setBusy(false);
     }
@@ -174,7 +174,7 @@ export default function Home() {
               <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted">
                 Threads Viral Lab
               </p>
-              <h1 className="text-lg font-semibold sm:text-xl">일본 2030 · 일어 16종 / 영어 8종</h1>
+              <h1 className="text-lg font-semibold sm:text-xl">?�본 2030 · ?�어 16�?/ ?�어 8�?/h1>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -182,11 +182,11 @@ export default function Home() {
                 onClick={() => setHistoryOpen((open) => !open)}
                 className="rounded-full border border-card-border px-3 py-2 text-sm"
               >
-                🕒 이전 기록 보관함
+                ?�� ?�전 기록 보�???
               </button>
               <button
                 type="button"
-                aria-label="테마 전환"
+                aria-label="?�마 ?�환"
                 onClick={() => persistTheme(theme === "dark" ? "light" : "dark")}
                 className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-card-border"
               >
@@ -204,7 +204,7 @@ export default function Home() {
             />
             <input
               type="text"
-              placeholder="아마존 어소시에이트 단축링크 / ID"
+              placeholder="?�마�??�소?�에?�트 ?�축링크 / ID"
               value={amazonLink}
               onChange={(event) => setAmazonLink(event.target.value)}
               className="w-full rounded-2xl border border-card-border bg-card px-4 py-2.5 text-sm outline-none"
@@ -217,20 +217,20 @@ export default function Home() {
         {historyOpen ? (
           <aside className="rounded-3xl border border-card-border bg-card p-4">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold">생성 기록</h2>
+              <h2 className="text-sm font-semibold">?�성 기록</h2>
               {history.length > 0 ? (
                 <button
                   type="button"
                   className="text-xs text-muted hover:text-accent"
                   onClick={() => persistHistory([])}
                 >
-                  전체 삭제
+                  ?�체 ??��
                 </button>
               ) : null}
             </div>
             <div className="space-y-2">
               {history.length === 0 ? (
-                <p className="text-xs text-muted">초콜릿, 세제 등 이전 생성이 여기에 쌓입니다.</p>
+                <p className="text-xs text-muted">초콜�? ?�제 ???�전 ?�성???�기???�입?�다.</p>
               ) : (
                 history.map((item) => (
                   <div key={item.id} className="flex items-start gap-1">
@@ -246,7 +246,7 @@ export default function Home() {
                     </button>
                     <button
                       type="button"
-                      aria-label="기록 삭제"
+                      aria-label="기록 ??��"
                       onClick={() => persistHistory(history.filter((row) => row.id !== item.id))}
                       className="p-2 text-muted hover:text-accent"
                     >
@@ -269,21 +269,21 @@ export default function Home() {
                 onClick={() => setMode("shopping")}
                 className={`rounded-full px-4 py-1.5 text-sm ${mode === "shopping" ? "bg-foreground text-background" : "border border-card-border text-muted"}`}
               >
-                모드 A: 꿀템/쇼핑
+                모드 A: 꿀???�핑
               </button>
               <button
                 type="button"
                 onClick={() => setMode("daily")}
                 className={`rounded-full px-4 py-1.5 text-sm ${mode === "daily" ? "bg-foreground text-background" : "border border-card-border text-muted"}`}
               >
-                모드 B: 일상/공감/힐링
+                모드 B: ?�상/공감/?�링
               </button>
             </div>
             <textarea
               rows={7}
               value={sourceText}
               onChange={(event) => setSourceText(event.target.value)}
-              placeholder="분석할 원문 텍스트"
+              placeholder="분석???�문 ?�스??
               className="mb-3 w-full rounded-2xl border border-card-border bg-background/60 px-4 py-3 text-sm outline-none"
             />
             <div className="grid gap-3 md:grid-cols-2">
@@ -291,7 +291,7 @@ export default function Home() {
                 type="url"
                 value={sourceUrl}
                 onChange={(event) => setSourceUrl(event.target.value)}
-                placeholder="소재 링크 (Threads / Instagram / 기사 URL)"
+                placeholder="?�재 링크 (Threads / Instagram / 기사 URL)"
                 className="w-full rounded-2xl border border-card-border bg-background/60 px-4 py-2.5 text-sm outline-none"
               />
               <input
@@ -309,7 +309,7 @@ export default function Home() {
               className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-accent px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
             >
               <Sparkles className="h-4 w-4" />
-              {busy ? "분석·생성 중…" : "분석하고 24종 카피 생성"}
+              {busy ? "분석·?�성 중�? : "분석?�고 24�?카피 ?�성"}
             </button>
             {error ? <p className="mt-3 text-sm text-accent">{error}</p> : null}
           </section>
@@ -318,13 +318,13 @@ export default function Home() {
             <>
               <section className="grid gap-4 lg:grid-cols-2">
                 <article className="rounded-3xl border border-card-border bg-card p-5">
-                  <h2 className="font-semibold">원문 1:1 직역</h2>
+                  <h2 className="font-semibold">?�문 1:1 직역</h2>
                   <p className="mt-3 whitespace-pre-wrap text-sm leading-7">
-                    {result.koreanTranslation || "번역 없음"}
+                    {result.koreanTranslation || "번역 ?�음"}
                   </p>
                 </article>
                 <article className="rounded-3xl border border-card-border bg-card p-5">
-                  <h2 className="font-semibold">왜 터졌는가?</h2>
+                  <h2 className="font-semibold">???�졌?��??</h2>
                   <ol className="mt-3 space-y-2 text-sm">
                     {result.viralTriggers.map((line, index) => (
                       <li key={`${line}-${index}`}>
@@ -337,7 +337,7 @@ export default function Home() {
 
               <section className="grid gap-4 lg:grid-cols-2">
                 <article className="rounded-3xl border border-card-border bg-card p-5">
-                  <h2 className="mb-3 font-semibold">📱 샤오홍슈 검색어</h2>
+                  <h2 className="mb-3 font-semibold">?�� ?�오?�슈 검?�어</h2>
                   <div className="flex flex-wrap gap-2">
                     {result.xiaohongshuKeywords.map((keyword) => (
                       <Chip key={keyword} text={keyword} />
@@ -345,7 +345,7 @@ export default function Home() {
                   </div>
                 </article>
                 <article className="rounded-3xl border border-card-border bg-card p-5">
-                  <h2 className="mb-3 font-semibold">🛒 일본 아마존 검색어</h2>
+                  <h2 className="mb-3 font-semibold">?�� ?�본 ?�마�?검?�어</h2>
                   <div className="flex flex-wrap gap-2">
                     {result.amazonKeywords.map((keyword) => (
                       <Chip key={keyword} text={keyword} />
@@ -361,14 +361,14 @@ export default function Home() {
                     onClick={() => setLangTab("ja")}
                     className={`rounded-full px-4 py-1.5 text-sm ${langTab === "ja" ? "bg-foreground text-background" : "border border-card-border text-muted"}`}
                   >
-                    일본어 16종
+                    ?�본??16�?
                   </button>
                   <button
                     type="button"
                     onClick={() => setLangTab("en")}
                     className={`rounded-full px-4 py-1.5 text-sm ${langTab === "en" ? "bg-foreground text-background" : "border border-card-border text-muted"}`}
                   >
-                    영어 8종
+                    ?�어 8�?
                   </button>
                 </div>
 
@@ -385,7 +385,7 @@ export default function Home() {
                               <p className="whitespace-pre-wrap text-[15px] leading-7">{copy.ja}</p>
                               <p className="mt-2 whitespace-pre-wrap text-sm text-muted">{copy.jp_ko}</p>
                               <div className="mt-3">
-                                <CopyButton value={copy.ja} label="일본어 복사" />
+                                <CopyButton value={copy.ja} label="?�본??복사" />
                               </div>
                             </article>
                           ))}
@@ -402,7 +402,7 @@ export default function Home() {
                           <p className="whitespace-pre-wrap text-[15px] leading-7">{copy.en}</p>
                           <p className="mt-2 whitespace-pre-wrap text-sm text-muted">{copy.en_ko}</p>
                           <div className="mt-3">
-                            <CopyButton value={copy.en} label="영어 복사" />
+                            <CopyButton value={copy.en} label="?�어 복사" />
                           </div>
                         </article>
                       ))}
@@ -411,7 +411,7 @@ export default function Home() {
               </section>
 
               <section className="rounded-3xl border border-card-border bg-card p-5">
-                <h2 className="font-semibold">구매 링크 2차 후킹 댓글 3종</h2>
+                <h2 className="font-semibold">구매 링크 2�??�킹 ?��? 3�?/h2>
                 <div className="mt-4 grid gap-3 lg:grid-cols-3">
                   {result.comments.map((comment, index) => (
                     <article
@@ -421,7 +421,7 @@ export default function Home() {
                       <pre className="whitespace-pre-wrap font-sans text-sm leading-6">{comment.ja}</pre>
                       <p className="mt-2 text-sm text-muted">{comment.ko}</p>
                       <div className="mt-3">
-                        <CopyButton value={comment.ja} label="📋 전체 복사" />
+                        <CopyButton value={comment.ja} label="?�� ?�체 복사" />
                       </div>
                     </article>
                   ))}

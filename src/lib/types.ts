@@ -46,8 +46,8 @@ export type HistoryItem = {
 };
 
 export const JP_PERSONAS: { id: JpPersona; label: string }[] = [
-  { id: "Information_LifeHacks", label: "꿀팁/정보 공유" },
-  { id: "Honest_Reviewer", label: "내돈내산/체험" },
-  { id: "Trend_FOMO", label: "트렌드/FOMO" },
-  { id: "PainPoint_Solver", label: "문제 해결" },
+  { id: "Information_LifeHacks", label: "꿀???�보 공유" },
+  { id: "Honest_Reviewer", label: "?�돈?�산/체험" },
+  { id: "Trend_FOMO", label: "?�렌??FOMO" },
+  { id: "PainPoint_Solver", label: "문제 ?�결" },
 ];

@@ -79,7 +79,7 @@ export async function extractPageFromUrl(rawUrl: string): Promise<ExtractedPage 
       title: "",
       description: "",
       bodyText: "",
-      error: "유효하지 않은 URL입니다.",
+      error: "?�효?��? ?��? URL?�니??",
     };
   }
 
@@ -89,7 +89,7 @@ export async function extractPageFromUrl(rawUrl: string): Promise<ExtractedPage 
       title: "",
       description: "",
       bodyText: "",
-      error: "http/https URL만 분석할 수 있습니다.",
+      error: "http/https URL�?분석?????�습?�다.",
     };
   }
 
@@ -99,7 +99,7 @@ export async function extractPageFromUrl(rawUrl: string): Promise<ExtractedPage 
       title: "",
       description: "",
       bodyText: "",
-      error: "내부 주소는 가져올 수 없습니다.",
+      error: "?��? 주소??가?�올 ???�습?�다.",
     };
   }
 
@@ -121,7 +121,7 @@ export async function extractPageFromUrl(rawUrl: string): Promise<ExtractedPage 
         title: "",
         description: "",
         bodyText: "",
-        error: `페이지 응답 오류 (${response.status})`,
+        error: `?�이지 ?�답 ?�류 (${response.status})`,
       };
     }
 
@@ -154,7 +154,7 @@ export async function extractPageFromUrl(rawUrl: string): Promise<ExtractedPage 
       title: "",
       description: "",
       bodyText: "",
-      error: "페이지를 가져오지 못했습니다. 텍스트를 함께 붙여넣어 주세요.",
+      error: "?�이지�?가?�오지 못했?�니?? ?�스?��? ?�께 붙여?�어 주세??",
     };
   }
 }
@@ -162,11 +162,11 @@ export async function extractPageFromUrl(rawUrl: string): Promise<ExtractedPage 
 export function formatExtractedPage(page: ExtractedPage): string {
   return [
     `URL: ${page.url}`,
-    page.error ? `추출 오류: ${page.error}` : "",
-    `og:title / title: ${page.title || "(없음)"}`,
-    `og:description / description: ${page.description || "(없음)"}`,
-    `본문 텍스트:`,
-    page.bodyText || "(본문을 추출하지 못함 — 메타 설명만 참고하고 추측으로 내용을 지어내지 말 것)",
+    page.error ? `추출 ?�류: ${page.error}` : "",
+    `og:title / title: ${page.title || "(?�음)"}`,
+    `og:description / description: ${page.description || "(?�음)"}`,
+    `본문 ?�스??`,
+    page.bodyText || "(본문??추출?��? 못함 ??메�? ?�명�?참고?�고 추측?�로 ?�용??지?�내지 �?�?",
   ]
     .filter(Boolean)
     .join("\n");

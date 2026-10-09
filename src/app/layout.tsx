@@ -18,7 +18,7 @@ const notoSansJp = Noto_Sans_JP({
 export const metadata: Metadata = {
   title: "Threads Viral Lab · JP 2030",
   description:
-    "일본 2030 여성 타깃 Threads 바이럴 분석·카피 생성 대시보드",
+    "?�본 2030 ?�성 ?��?Threads 바이??분석·카피 ?�성 ?�?�보??,
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
