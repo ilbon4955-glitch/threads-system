@@ -56,3 +56,4 @@ export function extractJsonObject(raw: string): unknown {
   }
   return JSON.parse(candidate.slice(start, end + 1));
 }
+

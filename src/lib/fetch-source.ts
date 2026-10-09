@@ -171,3 +171,4 @@ export function formatExtractedPage(page: ExtractedPage): string {
     .filter(Boolean)
     .join("\n");
 }
+

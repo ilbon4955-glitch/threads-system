@@ -51,3 +51,4 @@ export const JP_PERSONAS: { id: JpPersona; label: string }[] = [
   { id: "Trend_FOMO", label: "?�렌??FOMO" },
   { id: "PainPoint_Solver", label: "문제 ?�결" },
 ];
+

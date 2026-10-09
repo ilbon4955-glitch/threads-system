@@ -8,7 +8,7 @@ export const maxDuration = 60;
 
 const MODEL = "gemini-2.5-flash";
 const FALLBACK_MODEL = "gemini-2.5-flash";
-const LEGAL_NOTICE = "※Amazonアソシエイトプログラムに参加しています";
+const LEGAL_NOTICE = "?�Amazon?�ソ?�エ?�ト?�ロ?�ラ?�に?�加?�て?�ま??;
 
 const PERSONAS: JpPersona[] = JP_PERSONAS.map((item) => item.id);
 
@@ -61,7 +61,7 @@ function emptyResult(): GenerateResult {
 
 function buildComment(hook: string, amazonLink: string): string {
   const line = amazonLink.trim() || "https://amzn.to/your-link";
-  const hookLine = /👇|✨/.test(hook) ? hook.trim() : `${hook.trim()}👇✨`;
+  const hookLine = /?��|??.test(hook) ? hook.trim() : `${hook.trim()}?��??;
   return [hookLine, "", line, line, "", LEGAL_NOTICE].join("\n");
 }
 
@@ -73,41 +73,41 @@ function buildPrompt(params: {
 }): string {
   const modeLabel =
     params.mode === "shopping"
-      ? "모드 A: 꿀템/쇼핑"
-      : "모드 B: 일상/공감/힐링";
+      ? "모드 A: 꿀???�핑"
+      : "모드 B: ?�상/공감/?�링";
 
-  return `너는 일본 Threads 바이럴 카피라이터다. 타깃은 일본 2030 여성.
+  return `?�는 ?�본 Threads 바이??카피?�이?�다. ?�깃�? ?�본 2030 ?�성.
 
 [모드] ${modeLabel}
 
-[절대 규칙]
-- koreanTranslation: 아래 '실제 분석 소재 원문'을 자의적 해석 없이 있는 그대로 1:1 직역한다. 없는 사실을 보태지 말 것.
-- 소재가 비어 있으면 상상으로 본문을 만들지 말고, 있는 텍스트만 번역·분석한다.
-- 일본어 카피 본문(ja)에는 한국어·영어를 섞지 말 것. 순수 일본어만.
-- です/ます 직역투 금지. 실제 Threads에서 터지는 구어체/줄임말/훅만 사용:
-  〜マジでやばい / 〜説 / 〜件 / 〜すぎる / めっちゃ / これ沼 / 正直 / 神 / わかる
-- 주어(私/あなた) 배제, 해시태그(#) 금지.
-- 한국어 번역은 jp_ko / en_ko / koreanTranslation 필드에만 넣는다.
+[?��? 규칙]
+- koreanTranslation: ?�래 '?�제 분석 ?�재 ?�문'???�의???�석 ?�이 ?�는 그�?�?1:1 직역?�다. ?�는 ?�실??보태지 �?�?
+- ?�재가 비어 ?�으�??�상?�로 본문??만들지 말고, ?�는 ?�스?�만 번역·분석?�다.
+- ?�본??카피 본문(ja)?�는 ?�국?�·영?��? ?��? �?�? ?�수 ?�본?�만.
+- ?�す/?�す 직역??금�?. ?�제 Threads?�서 ?��???구어�?줄임�??�만 ?�용:
+  ?�マ?�で?�ば??/ ?�説 / ?�件 / ?�す?�る / ?�っ?�ゃ / ?�れ�?/ 正直 / �?/ ?�か??
+- 주어(�??�な?? 배제, ?�시?�그(#) 금�?.
+- ?�국??번역?� jp_ko / en_ko / koreanTranslation ?�드?�만 ?�는??
 
-[일본어 16종 — 페르소나별 4개씩]
-1. Information_LifeHacks: 꿀팁/정보 공유, 저장률
-2. Honest_Reviewer: 내돈내산/체험, 신뢰
-3. Trend_FOMO: 트렌드/지름, 품절·참여 유도
-4. PainPoint_Solver: 고민 해결, 비포/애프터
+[?�본??16�????�르?�나�?4개씩]
+1. Information_LifeHacks: 꿀???�보 공유, ?�?�률
+2. Honest_Reviewer: ?�돈?�산/체험, ?�뢰
+3. Trend_FOMO: ?�렌??지�? ?�절·참여 ?�도
+4. PainPoint_Solver: 고�? ?�결, 비포/?�프??
 
-각 페르소나 배열에는 { "ja", "jp_ko" } 객체를 정확히 4개.
+�??�르?�나 배열?�는 { "ja", "jp_ko" } 객체�??�확??4�?
 
-[영어 8종]
-english 배열에 { "en", "en_ko" } 8개. 미국/글로벌 2030 여성 구어체.
+[?�어 8�?
+english 배열??{ "en", "en_ko" } 8�? 미국/글로벌 2030 ?�성 구어�?
 
-[기타]
-- viralTriggers: 왜 터졌는가 3줄
-- xiaohongshuKeywords: 小红书 검색어 6~8개 (중국어)
-- amazonKeywords: 일본 아마존 검색어 6~8개 (일본어)
-- comments: 2차 후킹 한 줄 3개. ja에는 링크/고지를 넣지 말 것. (서버가 아마존 링크 2회 + ${LEGAL_NOTICE} 를 붙인다)
-- 아마존 링크: ${params.amazonLink || "(미입력)"}
+[기�?]
+- viralTriggers: ???�졌?��? 3�?
+- xiaohongshuKeywords: 小红�?검?�어 6~8�?(중국??
+- amazonKeywords: ?�본 ?�마�?검?�어 6~8�?(?�본??
+- comments: 2�??�킹 ??�?3�? ja?�는 링크/고�?�??��? �?�? (?�버가 ?�마�?링크 2??+ ${LEGAL_NOTICE} �?붙인??
+- ?�마�?링크: ${params.amazonLink || "(미입??"}
 
-JSON만 출력:
+JSON�?출력:
 {
   "koreanTranslation": "",
   "viralTriggers": ["","",""],
@@ -123,12 +123,12 @@ JSON만 출력:
   "comments": [{"ja":"","ko":""}]
 }
 
-[실제 분석 소재 원문]
-사용자 입력:
-${params.sourceText || "(없음)"}
+[?�제 분석 ?�재 ?�문]
+?�용???�력:
+${params.sourceText || "(?�음)"}
 
-웹페이지에서 추출한 실제 본문:
-${params.extracted || "(URL 없음)"}
+?�페?��??�서 추출???�제 본문:
+${params.extracted || "(URL ?�음)"}
 `;
 }
 
@@ -180,7 +180,7 @@ async function generateContentWithRetry(apiKey: string, contents: GeminiPart[]) 
     }
   }
 
-  throw lastError || new Error("구글 제미나이 서버가 과부하 상태입니다. 잠시 후 다시 시도해 주세요.");
+  throw lastError || new Error("구�? ?��??�이 ?�버가 과�????�태?�니?? ?�시 ???�시 ?�도??주세??");
 }
 
 function normalizeResult(parsed: Record<string, unknown>, amazonLink: string): GenerateResult {
@@ -207,10 +207,10 @@ function normalizeResult(parsed: Record<string, unknown>, amazonLink: string): G
   const commentRows = Array.isArray(parsed.comments) ? parsed.comments : [];
   result.comments = Array.from({ length: 3 }, (_, index) => {
     const row = commentRows[index] as { ja?: unknown; ko?: unknown } | undefined;
-    const hook = String(row?.ja ?? "気になりすぎて保存した").trim();
+    const hook = String(row?.ja ?? "気に?�り?�ぎ?�保存し??).trim();
     return {
       ja: buildComment(hook, amazonLink),
-      ko: String(row?.ko ?? "구매 유도용 2차 후킹 댓글").trim(),
+      ko: String(row?.ko ?? "구매 ?�도??2�??�킹 ?��?").trim(),
     };
   });
 
@@ -227,7 +227,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "Gemini API Key가 필요합니다. 상단 입력창에 API Key를 입력하거나 서버 환경변수를 설정해 주세요.",
+            "Gemini API Key가 ?�요?�니?? ?�단 ?�력창에 API Key�??�력?�거???�버 ?�경변?��? ?�정??주세??",
         },
         { status: 400 },
       );
@@ -245,13 +245,13 @@ export async function POST(req: NextRequest) {
 
     if (!sourceText && !sourceUrl && files.length === 0) {
       return NextResponse.json(
-        { error: "소재 텍스트, 링크, 또는 미디어 파일을 하나 이상 넣어 주세요." },
+        { error: "?�재 ?�스?? 링크, ?�는 미디???�일???�나 ?�상 ?�어 주세??" },
         { status: 400 },
       );
     }
 
     const page = await extractPageFromUrl(sourceUrl);
-    const extracted = page ? formatExtractedPage(page) : "(URL 없음)";
+    const extracted = page ? formatExtractedPage(page) : "(URL ?�음)";
     const prompt = buildPrompt({ mode, sourceText, extracted, amazonLink });
 
     const contents: GeminiPart[] = [prompt];
@@ -270,7 +270,8 @@ export async function POST(req: NextRequest) {
   } catch (error: unknown) {
     console.error("Generate API Error:", error);
     const message =
-      error instanceof Error ? error.message : "대본 생성 중 오류가 발생했습니다.";
+      error instanceof Error ? error.message : "?��??�성 �??�류가 발생?�습?�다.";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
