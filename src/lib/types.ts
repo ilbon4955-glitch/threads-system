@@ -52,3 +52,4 @@ export const JP_PERSONAS: { id: JpPersona; label: string }[] = [
   { id: "PainPoint_Solver", label: "문제 ?�결" },
 ];
 
+

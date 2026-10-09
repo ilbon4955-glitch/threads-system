@@ -65,7 +65,7 @@ async function generateContentWithRetry(apiKey: string, contents: any[]) {
     }
   }
 
-  throw lastError || new Error('구글 제미나이 서버가 과부하 상태입니다. 잠시 후 다시 시도해 주세요.');
+  throw lastError || new Error('구�? ?��??�이 ?�버가 과�????�태?�니?? ?�시 ???�시 ?�도??주세??');
 }
 
 export async function POST(req: NextRequest) {
@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
     
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'Gemini API Key가 필요합니다. 상단 입력창에 API Key를 입력해주시거나 서버 환경변수를 설정해주세요.' },
+        { error: 'Gemini API Key가 ?�요?�니?? ?�단 ?�력창에 API Key�??�력?�주?�거???�버 ?�경변?��? ?�정?�주?�요.' },
         { status: 400 }
       );
     }
@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(parsedData);
   } catch (error: any) {
     console.error('Generate API Error:', error);
-    let errorMessage = error?.message || '대본 생성 중 오류가 발생했습니다.';
+    let errorMessage = error?.message || '?��??�성 �??�류가 발생?�습?�다.';
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
