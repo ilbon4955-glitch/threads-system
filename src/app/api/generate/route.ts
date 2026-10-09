@@ -25,7 +25,8 @@ function cleanAndFixJson(text: string): string {
 }
 
 async function generateContentWithRetry(apiKey: string, contents: any[]) {
-  const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+  // 현재 구글에서 가장 안정적으로 지원하는 Flash 모델 라인업
+  const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash'];
   const genAI = new GoogleGenerativeAI(apiKey);
 
   let lastError: any = null;
@@ -73,7 +74,6 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { prompt, images, apiKey: userApiKey } = body;
 
-    // 전달받은 키가 없으면 환경변수 키 사용
     const apiKey = (userApiKey && userApiKey.trim() !== '') ? userApiKey.trim() : process.env.GEMINI_API_KEY;
     
     if (!apiKey) {
