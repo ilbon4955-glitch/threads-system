@@ -1,14 +1,11 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextRequest, NextResponse } from 'next/server';
 
-export const maxDuration = 60; // Vercel Execution Timeout 설정
+export const maxDuration = 60;
 
-// JSON 정제 및 자동 복구 함수
 function cleanAndFixJson(text: string): string {
   try {
     let cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    
-    // 시작과 끝 중괄호 위치 찾기
     const firstBrace = cleaned.indexOf('{');
     const lastBrace = cleaned.lastIndexOf('}');
     
@@ -16,7 +13,6 @@ function cleanAndFixJson(text: string): string {
       cleaned = cleaned.substring(firstBrace, lastBrace + 1);
     }
 
-    // 제어 문자 제거
     cleaned = cleaned.replace(/[\u0000-\u001F\u007F-\u009F]/g, (match) => {
       if (match === '\n' || match === '\r' || match === '\t') return match;
       return '';
@@ -28,16 +24,14 @@ function cleanAndFixJson(text: string): string {
   }
 }
 
-// 503 과부하 대응 및 모델 자동 Fallback 함수
 async function generateContentWithRetry(apiKey: string, contents: any[]) {
-  // 우선순위 모델 순서 (3.6-flash -> 2.5-flash -> 2.0-flash)
-  const modelsToTry = ['gemini-3.6-flash', 'gemini-2.5-flash', 'gemini-2.0-flash'];
+  const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
   const genAI = new GoogleGenerativeAI(apiKey);
 
   let lastError: any = null;
 
   for (const modelName of modelsToTry) {
-    let retries = 2; // 모델당 2회 재시도
+    let retries = 2;
     while (retries > 0) {
       try {
         const model = genAI.getGenerativeModel({
@@ -62,12 +56,10 @@ async function generateContentWithRetry(apiKey: string, contents: any[]) {
         if (is503) {
           retries--;
           if (retries > 0) {
-            // 503 발생 시 1.2초 대기 후 재시도
             await new Promise((resolve) => setTimeout(resolve, 1200));
             continue;
           }
         }
-        // 503이 아니거나 재시도 횟수를 다 쓰면 다음 fallback 모델로 전환
         break;
       }
     }
@@ -81,20 +73,18 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { prompt, images, apiKey: userApiKey } = body;
 
-    // API Key 검증 (클라이언트 전달 키 우선, 없으면 환경변수 사용)
-    const apiKey = userApiKey || process.env.GEMINI_API_KEY;
+    // 전달받은 키가 없으면 환경변수 키 사용
+    const apiKey = (userApiKey && userApiKey.trim() !== '') ? userApiKey.trim() : process.env.GEMINI_API_KEY;
+    
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'Gemini API Key가 필요합니다. 상단 입력창에 API Key를 입력해주세요.' },
+        { error: 'Gemini API Key가 필요합니다. 상단 입력창에 API Key를 입력해주시거나 서버 환경변수를 설정해주세요.' },
         { status: 400 }
       );
     }
 
-    // 프롬프트 및 이미지 파싱
     const contents: any[] = [];
-    if (prompt) {
-      contents.push(prompt);
-    }
+    if (prompt) contents.push(prompt);
 
     if (images && Array.isArray(images)) {
       for (const img of images) {
@@ -109,25 +99,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 과부하 방지 및 재시도 로직을 탑재한 제미나이 호출
     const rawResponse = await generateContentWithRetry(apiKey, contents);
-    
-    // JSON 정제
     const cleanedJsonString = cleanAndFixJson(rawResponse);
     const parsedData = JSON.parse(cleanedJsonString);
 
     return NextResponse.json(parsedData);
   } catch (error: any) {
     console.error('Generate API Error:', error);
-    
     let errorMessage = error?.message || '대본 생성 중 오류가 발생했습니다.';
-    if (errorMessage.includes('JSON')) {
-      errorMessage = '결과 데이터를 분석하는 중 형식이 다소 흐트러졌습니다. 다시 한 번 [생성] 버튼을 눌러주세요.';
-    }
-
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

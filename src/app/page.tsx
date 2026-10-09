@@ -20,7 +20,6 @@ export default function Home() {
   const [resultData, setResultData] = useState<any>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
 
-  // LocalStorage API 키 및 히스토리 로드
   useEffect(() => {
     const savedKey = localStorage.getItem('threads_gemini_api_key');
     if (savedKey) setApiKey(savedKey);
@@ -35,28 +34,24 @@ export default function Home() {
     }
   }, []);
 
-  // API Key 변경 시 저장
   const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const key = e.target.value;
     setApiKey(key);
     localStorage.setItem('threads_gemini_api_key', key);
   };
 
-  // 이미지 업로드 핸들러
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        const base64String = reader.result as string;
-        setSelectedImage(base64String);
+        setSelectedImage(reader.result as string);
         setImageMimeType(file.type);
       };
       reader.readAsDataURL(file);
     }
   };
 
-  // 대본 생성 요청
   const handleGenerate = async () => {
     if (!inputText && !selectedImage) {
       alert('변환할 원문 내용이나 이미지를 입력해주세요.');
@@ -86,12 +81,9 @@ export default function Home() {
           ]
         : [];
 
-      // 안전한 백엔드 API 호출 (/api/generate)
       const res = await fetch('/api/generate', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: promptPayload,
           images: imagesPayload,
@@ -107,7 +99,6 @@ export default function Home() {
 
       setResultData(data);
 
-      // 히스토리 저장
       const newItem: HistoryItem = {
         id: Date.now().toString(),
         date: new Date().toLocaleString('ko-KR'),
@@ -126,15 +117,8 @@ export default function Home() {
     }
   };
 
-  // 텍스트 복사 헬퍼
-  const copyToClipboard = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    alert(`${label} 복사되었습니다!`);
-  };
-
   return (
     <div className="flex min-h-screen bg-gray-900 text-gray-100">
-      {/* 좌측 히스토리 사이드바 */}
       <aside className="w-64 bg-gray-950 p-4 border-r border-gray-800 flex flex-col">
         <h2 className="text-lg font-bold mb-4 text-purple-400">작업 히스토리</h2>
         <div className="flex-1 overflow-y-auto space-y-2">
@@ -155,7 +139,6 @@ export default function Home() {
         </div>
       </aside>
 
-      {/* 메인 콘텐츠 영역 */}
       <main className="flex-1 p-8 max-w-5xl mx-auto">
         <header className="flex justify-between items-center mb-8 border-b border-gray-800 pb-4">
           <div>
@@ -165,16 +148,15 @@ export default function Home() {
           <div className="flex items-center space-x-2 bg-gray-800 p-2 rounded-lg border border-gray-700">
             <span className="text-xs text-gray-300">🔑 API Key:</span>
             <input
-              type="password"
-              placeholder="Gemini API Key 입력"
+              type="text"
+              placeholder="Gemini API Key (선택/입력)"
               value={apiKey}
               onChange={handleApiKeyChange}
-              className="bg-gray-900 text-white text-xs px-2 py-1 rounded border border-gray-700 focus:outline-none focus:border-purple-500 w-48"
+              className="bg-gray-900 text-white text-xs px-2 py-1 rounded border border-gray-700 focus:outline-none focus:border-purple-500 w-56"
             />
           </div>
         </header>
 
-        {/* 모드 선택 탭 */}
         <div className="flex space-x-2 mb-6">
           <button
             onClick={() => setActiveTab('A')}
@@ -182,7 +164,7 @@ export default function Home() {
               activeTab === 'A' ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
             }`}
           >
-            모드 A (정보 / 꿀팁 / 리뷰)
+            모드 A (상품 / 바이럴 / 정보공유)
           </button>
           <button
             onClick={() => setActiveTab('B')}
@@ -194,9 +176,9 @@ export default function Home() {
           </button>
         </div>
 
-        {/* 입력 폼 */}
         <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50 mb-8 space-y-4">
           <div>
+            <label className="block text-xs text-gray-400 mb-1 font-semibold">원문 내용 입력</label>
             <textarea
               rows={4}
               placeholder="변환할 원문 내용을 입력하세요..."
@@ -243,11 +225,10 @@ export default function Home() {
           </button>
         </div>
 
-        {/* 결과 출력 영역 */}
         {resultData && (
           <div className="bg-gray-800/80 p-6 rounded-xl border border-gray-700 space-y-6">
             <h2 className="text-xl font-bold text-purple-300">🎉 대본 생성 결과</h2>
-            <div className="p-4 bg-gray-900 rounded border border-gray-800 text-sm whitespace-pre-wrap">
+            <div className="p-4 bg-gray-900 rounded border border-gray-800 text-sm whitespace-pre-wrap font-mono">
               {typeof resultData === 'string' ? resultData : JSON.stringify(resultData, null, 2)}
             </div>
           </div>
